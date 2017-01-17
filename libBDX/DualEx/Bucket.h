@@ -8,6 +8,8 @@
 #include "PSI/AsyncPsiReceiver.h"
 #include "PSI/AsyncPsiSender.h"
 #include <future>
+#include "libRAM/XorHomomorphicCoordinator.h"
+#include "libRAM/identity.h"
 #include "cryptoTools/Common/Timer.h"
 
 //#define DUALEX_DEBUG
@@ -18,10 +20,14 @@ namespace osuCrypto
 {
 	class Bucket
 	{
+        private:
+            Identity mId;
+            
 	public:
 		Bucket();
 		~Bucket();
-
+                
+                void setIdentity(Identity id);
 
 		void initRecv(
 			const Circuit& cir,
@@ -79,6 +85,7 @@ namespace osuCrypto
 			const BitVector & input,
 			Role role,
 			Channel& chl,
+                        xhCoordinator::XHCCoordinator xhcCoordinator,
 			u64 circuitOffset,
 			u64 circuitStep);
 
@@ -132,6 +139,7 @@ namespace osuCrypto
 			const KProbeMatrix& myKprobe,
 			std::vector<block>& labels,
 			Channel& chl,
+                        xhCoordinator::XHCCoordinator xhcCoordinator,
 #ifdef ADAPTIVE_SECURE
 			std::vector<block> adaptiveSecureTableMasks,
 			const std::vector<block>& indexArray,

@@ -7,6 +7,8 @@
 //#include "cryptoTools/Common/ArrayView.h"
 #include "cryptoTools/Crypto/Commit.h"
 #include "Circuit/KProbeResistant.h"
+#include "libRAM/XorHomomorphicCoordinator.h"
+#include "libRAM/identity.h"
 #include "cryptoTools/Common/BitVector.h"
 
 namespace osuCrypto {
@@ -25,6 +27,7 @@ namespace osuCrypto {
 			Role role,
 			PRNG& prng,
 			Channel& channel,
+                        xhCoordinator::XHCCoordinator xhcCoordinator,
 			u64 idx,
 			const KProbeMatrix& theirKProbe,
 			std::vector<block>& wireBuff,
@@ -74,7 +77,7 @@ namespace osuCrypto {
 			Role role,
 			Channel& channel);
 
-		void commitToOutputs(const Circuit& cir, Role role, Channel& channel);
+		void commitToOutputs(const Circuit& cir, Role role, Channel& channel, xhCoordinator::XHCCoordinator xhcCoordinator);
 
 	public:
 		const BDX_OTExtReceiver* mRecvOT;
@@ -99,6 +102,7 @@ namespace osuCrypto {
 			const Circuit& cir,
 			const KProbeMatrix& mMyKProbe,
 			Channel& chl,
+                        xhCoordinator::XHCCoordinator xhcCoordinator,
 			u64 idx);
 
 		void initOT(

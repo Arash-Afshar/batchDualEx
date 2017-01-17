@@ -10,6 +10,7 @@
 #include <fstream>
 #include "cryptoTools/Network/Endpoint.h"
 #include "DualEx/Bucket.h"
+#include "libRAM/identity.h"
 #include "libOTe/Base/naor-pinkas.h"
 
 #define PARALLEL_PSI
@@ -55,8 +56,12 @@ namespace osuCrypto
 		const u64 bucketSize,
 		const u64 numOpened,
 		const u64 psiSecParam,
+                xhCoordinator::XHCCoordinator XHCCoordinator,
+                std::string name,
+                int computationId,
 		Endpoint & netMgr)
 		:
+                xhcCoordinator(XHCCoordinator),
 		mCircuit(cir),
 		mRole(role),
 		mNetMgr(netMgr),
@@ -72,6 +77,11 @@ namespace osuCrypto
 	{
 		if (cir.Inputs()[0] == 0 || cir.Inputs()[1] == 0)
 			throw std::runtime_error("There are better protocols for such things...");
+                for(int i = 0; i < numExes; i++)
+                {
+                    Identity id(name, computationId, i);
+                    mBuckets[i].setIdentity(id);
+                }
 	}
 
 
@@ -467,7 +477,7 @@ namespace osuCrypto
 					sendCircuitInputLoop(i, numThreadsPerEval, j, numParallelEval, chl);
 
 					// all done :)
-					chl.close();
+                                        chl.close();
 				});
 			}
 
@@ -524,7 +534,7 @@ namespace osuCrypto
 		// get their circuits, my K-prone input wire label commitments and output label commitments.
 		for (u64 i = startIdx; i < endIdx; i++)
 		{
-			mTheirCircuits[i].init(mCircuit, mMyKProbe, chl, i);
+			mTheirCircuits[i].init(mCircuit, mMyKProbe, chl, xhcCoordinator, i);
 		}
 
 
@@ -699,7 +709,7 @@ namespace osuCrypto
 		for (u64 i = startIdx; i < endIdx; i++)
 		{
 #ifdef ADAPTIVE_SECURE
-			mMyCircuits[i].init(mCircuit, mRole, prng, chl, i, mTheirKProbe, wireBuff, mIndexArray, adaptiveSecureTableMasks);
+			mMyCircuits[i].init(mCircuit, mRole, prng, chl, xhcCoordinator, i, mTheirKProbe, wireBuff, mIndexArray, adaptiveSecureTableMasks);
 #else
 			mMyCircuits[i].init(mCircuit, mRole, prng, chl, i, wireBuff);
 #endif
@@ -934,7 +944,7 @@ namespace osuCrypto
 
 			auto& bucket = mBuckets[bucketIdx];
 			const BitVector& input = *bucket.mInputFuture.get();
-			bucket.sendCircuitInputs(mCircuit, input, mRole, chl, circuitOffset, circuitStep);
+			bucket.sendCircuitInputs(mCircuit, input, mRole, chl, xhcCoordinator, circuitOffset, circuitStep);
 
 #ifdef PARALLEL_PSI
 			psiPermuteIdx = circuitOffset; 
@@ -996,6 +1006,7 @@ namespace osuCrypto
 				mMyKProbe,
 				mLabels[bucketOffset][circuitIdx],
 				chl,
+                                xhcCoordinator,
 #ifdef ADAPTIVE_SECURE
 				adaptiveSecureTableMasks,
 				mIndexArray,
@@ -1022,7 +1033,6 @@ namespace osuCrypto
 			}
 			bucket.mPsiInputPromise[psiPermuteIdx].set_value(psiInput);
 			psiInput = bucket.mPsiInputFuture[circuitIdx].get();
-
 
 			//std::cout << psiInput << std::endl;
 

@@ -1,4 +1,4 @@
-cmake_minimum_required (VERSION 3.6)
+cmake_minimum_required (VERSION 3.5)
 
 project(libBDX)
 
@@ -45,8 +45,9 @@ SET(CMAKE_CXX_FLAGS_DEBUG  "-O0 -g")
 #############################################
 
 include_directories("${CMAKE_SOURCE_DIR}/libBDX")
+include_directories("${CMAKE_SOURCE_DIR}/RamRunner")
 
-include_directories("${CMAKE_SOURCE_DIR}/libBDXTests")
+#include_directories("${CMAKE_SOURCE_DIR}/libBDXTests")
 
 set(libOTe_Dir "${CMAKE_SOURCE_DIR}/../libOTe/")
 include_directories(${libOTe_Dir})
@@ -62,38 +63,52 @@ set(NTL_Dir "${CMAKE_SOURCE_DIR}/thirdparty/linux/ntl/")
 include_directories("${NTL_Dir}/include")
 
 
-
 # default location for Boost
 set(BOOST_ROOT "${libOTe_Dir}/thirdparty/linux/boost/")
+include_directories("${BOOST_ROOT}")
+
+
 
 
 #############################################
 #               Build libBDX                #
 #############################################
 add_subdirectory(libBDX)
+add_subdirectory(libRAM)
 
 #############################################
 #           Build libBDX Tests              #
 #############################################
-add_subdirectory(libBDXTests)
+#add_subdirectory(libBDXTests)
+
+# #############################################
+# #              Build Frontend               #
+# #############################################
+# include_directories(${CMAKE_SOURCE_DIR})
+# file(GLOB_RECURSE SRC_FRONTEND ${CMAKE_SOURCE_DIR}/FrontEnd/*.cpp)
+# add_executable(frontend.exe ${SRC_FRONTEND})
+# 
+# #############################################
+# #            Install Frontend               #
+# #############################################
+# install (TARGETS frontend.exe DESTINATION bin)
 
 #############################################
-#              Build Frontend               #
+#              Build RAM Runner             #
 #############################################
 include_directories(${CMAKE_SOURCE_DIR})
-file(GLOB_RECURSE SRC_FRONTEND ${CMAKE_SOURCE_DIR}/FrontEnd/*.cpp)
-add_executable(frontend.exe ${SRC_FRONTEND})
+file(GLOB_RECURSE SRC_RAMRUNNER ${CMAKE_SOURCE_DIR}/ramRunner/*.cpp)
+add_executable(ram_frontend.exe ${SRC_RAMRUNNER})
 
 #############################################
-#            Install Frontend               #
+#            Install RAM Runner             #
 #############################################
-install (TARGETS frontend.exe DESTINATION bin)
+install (TARGETS ram_frontend.exe DESTINATION bin)
 
 #############################################
 #            Link our libraries             #
 #############################################
 
-target_link_libraries(frontend.exe libBDXTests)
-# other libs implicitly linked with libBDXTests
 
-
+target_link_libraries(ram_frontend.exe libRAM)
+# other libs implicitly linked with libRAM

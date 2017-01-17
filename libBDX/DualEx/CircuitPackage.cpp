@@ -17,7 +17,7 @@ namespace osuCrypto {
 		mOutputCommit(src.mOutputCommit),
 		mTheirInputCommits(std::move(src.mTheirInputCommits)),
 		mMyKProbeInputCommit(std::move(src.mMyKProbeInputCommit))
-	{
+	{ 
 	}
 
 	CircuitPackage::CircuitPackage(CircuitPackage&& src)
@@ -39,7 +39,8 @@ namespace osuCrypto {
 		const Circuit& cir,  
 		Role role,
 		PRNG& prng,
-		Channel& channel, 
+		Channel& channel,
+                xhCoordinator::XHCCoordinator xhcCoordinator,
 		u64 idx,
 		const KProbeMatrix& theirKProbe,
 		std::vector<block>& wireBuff,
@@ -88,7 +89,7 @@ namespace osuCrypto {
 
 		channel.asyncSend(std::move(buff));
 
-		commitToOutputs(cir, role, channel); 
+		commitToOutputs(cir, role, channel, xhcCoordinator); 
 	}
 
 	void CircuitPackage::initOT(
@@ -153,7 +154,7 @@ namespace osuCrypto {
 		channel.asyncSend(std::move(buff));
 	}
 
-	void CircuitPackage::commitToOutputs(const Circuit& cir, Role role, Channel& channel)
+	void CircuitPackage::commitToOutputs(const Circuit& cir, Role role, Channel& channel, xhCoordinator::XHCCoordinator xhcCoordinator)
 	{
 		auto buff = ByteStream(sizeof(block) * 2 * cir.Outputs().size());
 		buff.setp(sizeof(block) * 2 * cir.Outputs().size());
@@ -168,6 +169,13 @@ namespace osuCrypto {
 		tweaks[0] = _mm_set1_epi64x(2 * cir.WireCount());
 		tweaks[1] = _mm_set1_epi64x(3 * cir.WireCount());
 
+                // For RAM program integration:
+                //    1) XHCommit to all output wire
+                //    2) XHCommit to perm bit of all output wire
+                std::vector<bool> permBit(cir.OutputCount());
+                std::vector<std::array<block, 2> > allOutputLabels(cir.OutputCount() * 2);
+                int i = 0;
+                
 		for (auto& out : mCircuit.mOutputWires)
 		{
 			// compute the hashs of the wires as H(x) = AES_f( x * 2 ^ tweak) ^ (x * 2 ^ tweak)    
@@ -179,6 +187,9 @@ namespace osuCrypto {
 
 			hash[0] = hash[0] ^ enc[0]; // H( a0 )
 			hash[1] = hash[1] ^ enc[1]; // H( a1 )
+                        allOutputLabels[i][0] = hash[0];
+                        allOutputLabels[i][1] = hash[1];
+                        permBit[i] = PermuteBit(hash[0]);
 
 			// increment the tweaks
 			tweaks[0] = tweaks[0] + OneBlock;
@@ -194,6 +205,8 @@ namespace osuCrypto {
 		*((Commit*)commitBuff->data()) = Commit(buff.data(), buff.size());
 
 		channel.asyncSend(std::move(commitBuff));
+                Identity id("TODO", -1, -1);
+                xhcCoordinator.commitToOutput(permBit, allOutputLabels, id);
 	}
 
 
@@ -203,6 +216,7 @@ namespace osuCrypto {
 		const Circuit& cir, 
 		const KProbeMatrix& mMyKProbe,
 		Channel& chl,
+                xhCoordinator::XHCCoordinator xhcCoordinator,
 		u64 idx)
 	{
 		mIdx = idx;
@@ -214,6 +228,11 @@ namespace osuCrypto {
 		
 		// receive one large commit for all of the hashed output labels
 		chl.recv(&mOutputCommit, sizeof(Commit));
+                // For RAM program integration:
+                //    1) XHCommit to all output wire
+                //    2) XHCommit to perm bit of all output wire
+                Identity id("TODO", -1, -1);
+                xhcCoordinator.receiveOutputCommitments(id);
 
 	}
 

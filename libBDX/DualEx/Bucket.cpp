@@ -29,7 +29,11 @@ namespace osuCrypto
 	{
 	}
 
-
+        void Bucket::setIdentity(Identity id)
+        {
+            mId = id;
+        }
+        
 	void Bucket::initRecv(
 		const Circuit& cir,
 		Channel& chl,
@@ -416,6 +420,7 @@ namespace osuCrypto
 		const KProbeMatrix& myKprobe,
 		std::vector<block>& labels,
 		Channel& chl,
+                xhCoordinator::XHCCoordinator xhcCoordinator,
 #ifdef ADAPTIVE_SECURE
 		std::vector<block> adaptiveSecureTableMasks,
 		const std::vector<block>& indexArray,
@@ -475,6 +480,9 @@ namespace osuCrypto
 		// receive their labels.
 		auto label = labels.data() + start[1 ^ role];
 		chl.recv(label, cir.Inputs()[1 ^ role] * sizeof(block));
+                
+                // For RAM integration, receive the input and perm bit commitments
+                xhcCoordinator.receiveInputCommitments(mId);
 
 		timer.setTimePoint("theirInputs");
 		//{
@@ -597,6 +605,7 @@ namespace osuCrypto
 		const BitVector & input,
 		Role role,
 		Channel& chl,
+                xhCoordinator::XHCCoordinator xhcCoordinator,
 		u64 circuitOffset,
 		u64 circuitStep)
 	{
@@ -644,6 +653,11 @@ namespace osuCrypto
 #endif
 
 
+                        // For RAM program integration:
+                        //    1) XHCommit to garbler's input wire
+                        //    2) XHCommit to perm bit of garbler's input wire
+                        std::vector<bool> permBit(cir.Inputs()[role]);
+                        std::vector<std::array<block, 2> > allInputLabels(cir.Inputs()[role] * 2);
 
 			std::unique_ptr<ByteStream> buff(new ByteStream(cir.Inputs()[role] * sizeof(block)));
 			buff->setp(cir.Inputs()[role] * sizeof(block));
@@ -657,11 +671,15 @@ namespace osuCrypto
 
 				// use myLabels as storage for the corrected labels and just send. saves a data read.
 				*inputLabels = *myLabels ^ corrects[input[i]];
+                                permBit[i] = PermuteBit(*myLabels);
+                                allInputLabels[i][0] = *myLabels;
+                                allInputLabels[i][1] = *myLabels ^ corrects[1];
 
 				//std::cout << "sending P" << (int)role << " my il[" << i << "] " << *inputLabels << std::endl;
 			}
 			//chl.asyncSend(myLabels, cir.Inputs()[role] * sizeof(block));
 			chl.asyncSend(std::move(buff));
+                        xhcCoordinator.commitToInput(permBit, allInputLabels, mId);
 		}
 
 

@@ -202,3 +202,6 @@ kProbe_data_*
 
 CodeDB
 LinuxFrontEnd/VisualGDBCache
+/.ycm_extra_conf.pyc
+/.ycm_extra_conf.py
+/.ycm_extra_conf_backup.py

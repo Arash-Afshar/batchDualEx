@@ -1,0 +1,40 @@
+
+/* 
+ * File:   identity.h
+ * Author: aafshar
+ *
+ * Created on January 14, 2017, 5:23 PM
+ */
+
+#ifndef IDENTITY_H
+#define IDENTITY_H
+
+
+class Identity
+{
+public:
+    std::string mName;
+    int mComputationId;
+    int mbBucketId;
+    
+    Identity()
+    :
+    mName("NA"),
+    mComputationId(-1),
+    mbBucketId(-1)
+    {
+        
+    }
+    
+    Identity(std::string name, int computationId, int bucketId)
+    :
+    mName(name),
+    mComputationId(computationId),
+    mbBucketId(bucketId)
+    {
+        
+    }
+};
+
+#endif /* IDENTITY_H */
+

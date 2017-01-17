@@ -8,6 +8,8 @@
 #include "libOTe/TwoChooseOne/KosOtExtReceiver.h"
 #include "libOTe/TwoChooseOne/KosOtExtSender.h"
 #include "Circuit/KProbeResistant.h"
+#include "libRAM/XorHomomorphicCoordinator.h"
+#include "cryptoTools/Network/BtEndpoint.h"
 
 //#define DUALEX_DEBUG
 namespace osuCrypto
@@ -36,6 +38,7 @@ namespace osuCrypto
 		std::vector<Channel*> mRecvMainChls,mRecvSubChls, mSendSubChls;// , &mPsiChl;
 		//std::vector<std::vector<Channel*>> mPSISendChls, mPSIRecvChls;
 		//std::unique_ptr<std::mutex[]> mMtxs;
+                xhCoordinator::XHCCoordinator xhcCoordinator;
 	public:
 
 		const Circuit& mCircuit;
@@ -53,14 +56,17 @@ namespace osuCrypto
 
 		//ByteStream mTheirCnCCommit, mMyCnCCommit, mMyCnCOpen;
 
-
+                
 		DualExActor(
 			const Circuit& cir,
 			const Role role,
 			const u64 numExes,
 			const u64 bucketSize,
 			const u64 numOpened,
-			const u64 psiSecParam, 
+			const u64 psiSecParam,
+                        xhCoordinator::XHCCoordinator xhcCoordinator,
+                        std::string name,
+                        int computationId,
 			Endpoint & netMgr);
 
 		~DualExActor()
