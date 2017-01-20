@@ -6,6 +6,8 @@
 #include "cryptoTools/Common/Defines.h"
 #include "XorHomomorphicCommit.h"
 #include "identity.h"
+#include "split-commit/split-commit-snd.h"
+#include "split-commit/split-commit-rec.h"
 
 
 namespace xhCoordinator
@@ -14,6 +16,9 @@ namespace xhCoordinator
     class XHCCoordinator
     {
     public:
+        
+        XHCCoordinator(int num_commits, osuCrypto::Role role);
+        
         /**
          * Receives garbled input keys (both 0-key and 1-key) and the permutation bit, stores them, commits to them, and send them to the other party
          * 
@@ -21,7 +26,7 @@ namespace xhCoordinator
          * @param allInputLabels
          * @param id: identity of the bucket who has sent these values
          */
-        void commitToInput(std::vector<bool> permBit, std::vector<std::array<osuCrypto::block, 2> > allInputLabels, Identity id);
+        void commitToInput(std::vector<bool> permBit, std::vector<osuCrypto::block> allInputLabels, Identity id, osuCrypto::Role role, osuCrypto::Channel &send_channel);
         
         /**
          * Behaves exactly as commitToInput but for output wires
@@ -37,7 +42,7 @@ namespace xhCoordinator
          * 
          * @param id
          */
-        void receiveInputCommitments(Identity id);
+        void receiveInputCommitments(Identity id, osuCrypto::Role role, int inputSize, osuCrypto::Channel &rec_channel);
         
         /**
          * Receives the output commitments
@@ -45,7 +50,22 @@ namespace xhCoordinator
          */
         void receiveOutputCommitments(Identity id);
         
-    };
+    private:
+        ctpl::thread_pool *thread_pool;
+        std::vector<BYTEArrayVector> rec_commit_shares;
+        std::vector<std::array<BYTEArrayVector, 2> > send_commit_shares;
+        osuCrypto::BtEndpoint *end_point;
+
+        void randomSenderCommits(std::vector<SplitCommitSender> &senders, osuCrypto::Role role, int num_execs, int num_commits);
+        void randomReceiverCommits(std::vector<SplitCommitReceiver> &receivers, std::vector<osuCrypto::PRNG> &exec_rnds, osuCrypto::Role role, int num_execs, int num_commits);
+
+    }; 
+    
+    
+    void xorUI8s(std::vector<uint8_t> &ret, int pos, uint8_t *vec1, int vec1_size, uint8_t *vec2, int vec2_size);
+
+
+    
     // TODO: move the following to the above class
     
 //        

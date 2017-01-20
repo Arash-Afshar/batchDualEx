@@ -7,6 +7,7 @@ include_directories(${CMAKE_SOURCE_DIR})
 
 add_library(libRAM STATIC ${SRCS})
 target_link_libraries(libRAM libBDX)
+target_link_libraries(libRAM SPLIT_COMMIT)
 
 
 #############################################

@@ -10,6 +10,8 @@
 #ifndef XORHOMOMORPHICCOMMIT_H
 #define XORHOMOMORPHICCOMMIT_H
 
+#include "util/util.h"
+
 namespace xhCoordinator
 {
 

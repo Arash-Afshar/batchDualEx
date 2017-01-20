@@ -10,11 +10,12 @@ namespace batchRam
     chl(myChl),
     role(myRole)
     {
+        int num_commits = 1;
         std::cout << "in Coord, going to configure" << std::endl;
         ramConfig::configure(memoryLength, memoryCellLength, instructionLength);
-        xhcCoordinator = xhCoordinator::XHCCoordinator();
+        xhcCoordinator = new xhCoordinator::XHCCoordinator(num_commits, role);
         std::cout << "going to init" << std::endl;
-        initialize(circ_path_prefix, xhcCoordinator, numExec, bucketSize, numOpened, psiSecParam, numConcurrentSetups, numConcurrentEvals, numThreadsPerEval);
+        initialize(circ_path_prefix, *xhcCoordinator, numExec, bucketSize, numOpened, psiSecParam, numConcurrentSetups, numConcurrentEvals, numThreadsPerEval);
 //        std::cout << "going to run main loop" << std::endl;
 //        mainLoop();
     }

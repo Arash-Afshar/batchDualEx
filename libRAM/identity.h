@@ -16,12 +16,14 @@ public:
     std::string mName;
     int mComputationId;
     int mbBucketId;
+    int circuitOffset;
     
     Identity()
     :
     mName("NA"),
     mComputationId(-1),
-    mbBucketId(-1)
+    mbBucketId(-1),
+    circuitOffset(-1)
     {
         
     }
@@ -30,7 +32,8 @@ public:
     :
     mName(name),
     mComputationId(computationId),
-    mbBucketId(bucketId)
+    mbBucketId(bucketId),
+    circuitOffset(-1)
     {
         
     }

@@ -68,15 +68,27 @@ install/fast: preinstall/fast
 	/usr/bin/cmake -P cmake_install.cmake
 .PHONY : install/fast
 
-# Special rule for the target list_install_components
-list_install_components:
-	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --cyan "Available install components are: \"Unspecified\""
-.PHONY : list_install_components
+# Special rule for the target install/local
+install/local: preinstall
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --cyan "Installing only the local directory..."
+	/usr/bin/cmake -DCMAKE_INSTALL_LOCAL_ONLY=1 -P cmake_install.cmake
+.PHONY : install/local
 
-# Special rule for the target list_install_components
-list_install_components/fast: list_install_components
+# Special rule for the target install/local
+install/local/fast: install/local
 
-.PHONY : list_install_components/fast
+.PHONY : install/local/fast
+
+# Special rule for the target edit_cache
+edit_cache:
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --cyan "Running CMake cache editor..."
+	/usr/bin/ccmake -H$(CMAKE_SOURCE_DIR) -B$(CMAKE_BINARY_DIR)
+.PHONY : edit_cache
+
+# Special rule for the target edit_cache
+edit_cache/fast: edit_cache
+
+.PHONY : edit_cache/fast
 
 # Special rule for the target rebuild_cache
 rebuild_cache:
@@ -100,27 +112,15 @@ install/strip/fast: install/strip
 
 .PHONY : install/strip/fast
 
-# Special rule for the target install/local
-install/local: preinstall
-	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --cyan "Installing only the local directory..."
-	/usr/bin/cmake -DCMAKE_INSTALL_LOCAL_ONLY=1 -P cmake_install.cmake
-.PHONY : install/local
+# Special rule for the target list_install_components
+list_install_components:
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --cyan "Available install components are: \"Unspecified\""
+.PHONY : list_install_components
 
-# Special rule for the target install/local
-install/local/fast: install/local
+# Special rule for the target list_install_components
+list_install_components/fast: list_install_components
 
-.PHONY : install/local/fast
-
-# Special rule for the target edit_cache
-edit_cache:
-	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --cyan "Running CMake cache editor..."
-	/usr/bin/ccmake -H$(CMAKE_SOURCE_DIR) -B$(CMAKE_BINARY_DIR)
-.PHONY : edit_cache
-
-# Special rule for the target edit_cache
-edit_cache/fast: edit_cache
-
-.PHONY : edit_cache/fast
+.PHONY : list_install_components/fast
 
 # The main all target
 all: cmake_check_build_system
@@ -168,6 +168,58 @@ ram_frontend.exe/fast:
 .PHONY : ram_frontend.exe/fast
 
 #=============================================================================
+# Target rules for targets named SPLIT_COMMIT
+
+# Build rule for target.
+SPLIT_COMMIT: cmake_check_build_system
+	$(MAKE) -f CMakeFiles/Makefile2 SPLIT_COMMIT
+.PHONY : SPLIT_COMMIT
+
+# fast build rule for target.
+SPLIT_COMMIT/fast:
+	$(MAKE) -f CMakeFiles/SPLIT_COMMIT.dir/build.make CMakeFiles/SPLIT_COMMIT.dir/build
+.PHONY : SPLIT_COMMIT/fast
+
+#=============================================================================
+# Target rules for targets named BYTEARRAYVEC
+
+# Build rule for target.
+BYTEARRAYVEC: cmake_check_build_system
+	$(MAKE) -f CMakeFiles/Makefile2 BYTEARRAYVEC
+.PHONY : BYTEARRAYVEC
+
+# fast build rule for target.
+BYTEARRAYVEC/fast:
+	$(MAKE) -f CMakeFiles/BYTEARRAYVEC.dir/build.make CMakeFiles/BYTEARRAYVEC.dir/build
+.PHONY : BYTEARRAYVEC/fast
+
+#=============================================================================
+# Target rules for targets named commit_test_snd
+
+# Build rule for target.
+commit_test_snd: cmake_check_build_system
+	$(MAKE) -f CMakeFiles/Makefile2 commit_test_snd
+.PHONY : commit_test_snd
+
+# fast build rule for target.
+commit_test_snd/fast:
+	$(MAKE) -f CMakeFiles/commit_test_snd.dir/build.make CMakeFiles/commit_test_snd.dir/build
+.PHONY : commit_test_snd/fast
+
+#=============================================================================
+# Target rules for targets named commit_test_rcv
+
+# Build rule for target.
+commit_test_rcv: cmake_check_build_system
+	$(MAKE) -f CMakeFiles/Makefile2 commit_test_rcv
+.PHONY : commit_test_rcv
+
+# fast build rule for target.
+commit_test_rcv/fast:
+	$(MAKE) -f CMakeFiles/commit_test_rcv.dir/build.make CMakeFiles/commit_test_rcv.dir/build
+.PHONY : commit_test_rcv/fast
+
+#=============================================================================
 # Target rules for targets named libBDX
 
 # Build rule for target.
@@ -192,6 +244,168 @@ libRAM: cmake_check_build_system
 libRAM/fast:
 	$(MAKE) -f libRAM/CMakeFiles/libRAM.dir/build.make libRAM/CMakeFiles/libRAM.dir/build
 .PHONY : libRAM/fast
+
+commitTestReceiver.o: commitTestReceiver.cpp.o
+
+.PHONY : commitTestReceiver.o
+
+# target to build an object file
+commitTestReceiver.cpp.o:
+	$(MAKE) -f CMakeFiles/commit_test_rcv.dir/build.make CMakeFiles/commit_test_rcv.dir/commitTestReceiver.cpp.o
+.PHONY : commitTestReceiver.cpp.o
+
+commitTestReceiver.i: commitTestReceiver.cpp.i
+
+.PHONY : commitTestReceiver.i
+
+# target to preprocess a source file
+commitTestReceiver.cpp.i:
+	$(MAKE) -f CMakeFiles/commit_test_rcv.dir/build.make CMakeFiles/commit_test_rcv.dir/commitTestReceiver.cpp.i
+.PHONY : commitTestReceiver.cpp.i
+
+commitTestReceiver.s: commitTestReceiver.cpp.s
+
+.PHONY : commitTestReceiver.s
+
+# target to generate assembly for a file
+commitTestReceiver.cpp.s:
+	$(MAKE) -f CMakeFiles/commit_test_rcv.dir/build.make CMakeFiles/commit_test_rcv.dir/commitTestReceiver.cpp.s
+.PHONY : commitTestReceiver.cpp.s
+
+commitTestSender.o: commitTestSender.cpp.o
+
+.PHONY : commitTestSender.o
+
+# target to build an object file
+commitTestSender.cpp.o:
+	$(MAKE) -f CMakeFiles/commit_test_snd.dir/build.make CMakeFiles/commit_test_snd.dir/commitTestSender.cpp.o
+.PHONY : commitTestSender.cpp.o
+
+commitTestSender.i: commitTestSender.cpp.i
+
+.PHONY : commitTestSender.i
+
+# target to preprocess a source file
+commitTestSender.cpp.i:
+	$(MAKE) -f CMakeFiles/commit_test_snd.dir/build.make CMakeFiles/commit_test_snd.dir/commitTestSender.cpp.i
+.PHONY : commitTestSender.cpp.i
+
+commitTestSender.s: commitTestSender.cpp.s
+
+.PHONY : commitTestSender.s
+
+# target to generate assembly for a file
+commitTestSender.cpp.s:
+	$(MAKE) -f CMakeFiles/commit_test_snd.dir/build.make CMakeFiles/commit_test_snd.dir/commitTestSender.cpp.s
+.PHONY : commitTestSender.cpp.s
+
+media/linuxstorage/git/SplitCommit/src/split-commit/split-commit-rec.o: media/linuxstorage/git/SplitCommit/src/split-commit/split-commit-rec.cpp.o
+
+.PHONY : media/linuxstorage/git/SplitCommit/src/split-commit/split-commit-rec.o
+
+# target to build an object file
+media/linuxstorage/git/SplitCommit/src/split-commit/split-commit-rec.cpp.o:
+	$(MAKE) -f CMakeFiles/SPLIT_COMMIT.dir/build.make CMakeFiles/SPLIT_COMMIT.dir/media/linuxstorage/git/SplitCommit/src/split-commit/split-commit-rec.cpp.o
+.PHONY : media/linuxstorage/git/SplitCommit/src/split-commit/split-commit-rec.cpp.o
+
+media/linuxstorage/git/SplitCommit/src/split-commit/split-commit-rec.i: media/linuxstorage/git/SplitCommit/src/split-commit/split-commit-rec.cpp.i
+
+.PHONY : media/linuxstorage/git/SplitCommit/src/split-commit/split-commit-rec.i
+
+# target to preprocess a source file
+media/linuxstorage/git/SplitCommit/src/split-commit/split-commit-rec.cpp.i:
+	$(MAKE) -f CMakeFiles/SPLIT_COMMIT.dir/build.make CMakeFiles/SPLIT_COMMIT.dir/media/linuxstorage/git/SplitCommit/src/split-commit/split-commit-rec.cpp.i
+.PHONY : media/linuxstorage/git/SplitCommit/src/split-commit/split-commit-rec.cpp.i
+
+media/linuxstorage/git/SplitCommit/src/split-commit/split-commit-rec.s: media/linuxstorage/git/SplitCommit/src/split-commit/split-commit-rec.cpp.s
+
+.PHONY : media/linuxstorage/git/SplitCommit/src/split-commit/split-commit-rec.s
+
+# target to generate assembly for a file
+media/linuxstorage/git/SplitCommit/src/split-commit/split-commit-rec.cpp.s:
+	$(MAKE) -f CMakeFiles/SPLIT_COMMIT.dir/build.make CMakeFiles/SPLIT_COMMIT.dir/media/linuxstorage/git/SplitCommit/src/split-commit/split-commit-rec.cpp.s
+.PHONY : media/linuxstorage/git/SplitCommit/src/split-commit/split-commit-rec.cpp.s
+
+media/linuxstorage/git/SplitCommit/src/split-commit/split-commit-snd.o: media/linuxstorage/git/SplitCommit/src/split-commit/split-commit-snd.cpp.o
+
+.PHONY : media/linuxstorage/git/SplitCommit/src/split-commit/split-commit-snd.o
+
+# target to build an object file
+media/linuxstorage/git/SplitCommit/src/split-commit/split-commit-snd.cpp.o:
+	$(MAKE) -f CMakeFiles/SPLIT_COMMIT.dir/build.make CMakeFiles/SPLIT_COMMIT.dir/media/linuxstorage/git/SplitCommit/src/split-commit/split-commit-snd.cpp.o
+.PHONY : media/linuxstorage/git/SplitCommit/src/split-commit/split-commit-snd.cpp.o
+
+media/linuxstorage/git/SplitCommit/src/split-commit/split-commit-snd.i: media/linuxstorage/git/SplitCommit/src/split-commit/split-commit-snd.cpp.i
+
+.PHONY : media/linuxstorage/git/SplitCommit/src/split-commit/split-commit-snd.i
+
+# target to preprocess a source file
+media/linuxstorage/git/SplitCommit/src/split-commit/split-commit-snd.cpp.i:
+	$(MAKE) -f CMakeFiles/SPLIT_COMMIT.dir/build.make CMakeFiles/SPLIT_COMMIT.dir/media/linuxstorage/git/SplitCommit/src/split-commit/split-commit-snd.cpp.i
+.PHONY : media/linuxstorage/git/SplitCommit/src/split-commit/split-commit-snd.cpp.i
+
+media/linuxstorage/git/SplitCommit/src/split-commit/split-commit-snd.s: media/linuxstorage/git/SplitCommit/src/split-commit/split-commit-snd.cpp.s
+
+.PHONY : media/linuxstorage/git/SplitCommit/src/split-commit/split-commit-snd.s
+
+# target to generate assembly for a file
+media/linuxstorage/git/SplitCommit/src/split-commit/split-commit-snd.cpp.s:
+	$(MAKE) -f CMakeFiles/SPLIT_COMMIT.dir/build.make CMakeFiles/SPLIT_COMMIT.dir/media/linuxstorage/git/SplitCommit/src/split-commit/split-commit-snd.cpp.s
+.PHONY : media/linuxstorage/git/SplitCommit/src/split-commit/split-commit-snd.cpp.s
+
+media/linuxstorage/git/SplitCommit/src/split-commit/split-commit.o: media/linuxstorage/git/SplitCommit/src/split-commit/split-commit.cpp.o
+
+.PHONY : media/linuxstorage/git/SplitCommit/src/split-commit/split-commit.o
+
+# target to build an object file
+media/linuxstorage/git/SplitCommit/src/split-commit/split-commit.cpp.o:
+	$(MAKE) -f CMakeFiles/SPLIT_COMMIT.dir/build.make CMakeFiles/SPLIT_COMMIT.dir/media/linuxstorage/git/SplitCommit/src/split-commit/split-commit.cpp.o
+.PHONY : media/linuxstorage/git/SplitCommit/src/split-commit/split-commit.cpp.o
+
+media/linuxstorage/git/SplitCommit/src/split-commit/split-commit.i: media/linuxstorage/git/SplitCommit/src/split-commit/split-commit.cpp.i
+
+.PHONY : media/linuxstorage/git/SplitCommit/src/split-commit/split-commit.i
+
+# target to preprocess a source file
+media/linuxstorage/git/SplitCommit/src/split-commit/split-commit.cpp.i:
+	$(MAKE) -f CMakeFiles/SPLIT_COMMIT.dir/build.make CMakeFiles/SPLIT_COMMIT.dir/media/linuxstorage/git/SplitCommit/src/split-commit/split-commit.cpp.i
+.PHONY : media/linuxstorage/git/SplitCommit/src/split-commit/split-commit.cpp.i
+
+media/linuxstorage/git/SplitCommit/src/split-commit/split-commit.s: media/linuxstorage/git/SplitCommit/src/split-commit/split-commit.cpp.s
+
+.PHONY : media/linuxstorage/git/SplitCommit/src/split-commit/split-commit.s
+
+# target to generate assembly for a file
+media/linuxstorage/git/SplitCommit/src/split-commit/split-commit.cpp.s:
+	$(MAKE) -f CMakeFiles/SPLIT_COMMIT.dir/build.make CMakeFiles/SPLIT_COMMIT.dir/media/linuxstorage/git/SplitCommit/src/split-commit/split-commit.cpp.s
+.PHONY : media/linuxstorage/git/SplitCommit/src/split-commit/split-commit.cpp.s
+
+media/linuxstorage/git/SplitCommit/src/util/byte-array-vec.o: media/linuxstorage/git/SplitCommit/src/util/byte-array-vec.cpp.o
+
+.PHONY : media/linuxstorage/git/SplitCommit/src/util/byte-array-vec.o
+
+# target to build an object file
+media/linuxstorage/git/SplitCommit/src/util/byte-array-vec.cpp.o:
+	$(MAKE) -f CMakeFiles/BYTEARRAYVEC.dir/build.make CMakeFiles/BYTEARRAYVEC.dir/media/linuxstorage/git/SplitCommit/src/util/byte-array-vec.cpp.o
+.PHONY : media/linuxstorage/git/SplitCommit/src/util/byte-array-vec.cpp.o
+
+media/linuxstorage/git/SplitCommit/src/util/byte-array-vec.i: media/linuxstorage/git/SplitCommit/src/util/byte-array-vec.cpp.i
+
+.PHONY : media/linuxstorage/git/SplitCommit/src/util/byte-array-vec.i
+
+# target to preprocess a source file
+media/linuxstorage/git/SplitCommit/src/util/byte-array-vec.cpp.i:
+	$(MAKE) -f CMakeFiles/BYTEARRAYVEC.dir/build.make CMakeFiles/BYTEARRAYVEC.dir/media/linuxstorage/git/SplitCommit/src/util/byte-array-vec.cpp.i
+.PHONY : media/linuxstorage/git/SplitCommit/src/util/byte-array-vec.cpp.i
+
+media/linuxstorage/git/SplitCommit/src/util/byte-array-vec.s: media/linuxstorage/git/SplitCommit/src/util/byte-array-vec.cpp.s
+
+.PHONY : media/linuxstorage/git/SplitCommit/src/util/byte-array-vec.s
+
+# target to generate assembly for a file
+media/linuxstorage/git/SplitCommit/src/util/byte-array-vec.cpp.s:
+	$(MAKE) -f CMakeFiles/BYTEARRAYVEC.dir/build.make CMakeFiles/BYTEARRAYVEC.dir/media/linuxstorage/git/SplitCommit/src/util/byte-array-vec.cpp.s
+.PHONY : media/linuxstorage/git/SplitCommit/src/util/byte-array-vec.cpp.s
 
 ramRunner/SimpleRunner.o: ramRunner/SimpleRunner.cpp.o
 
@@ -227,14 +441,36 @@ help:
 	@echo "... clean"
 	@echo "... depend"
 	@echo "... install"
-	@echo "... list_install_components"
-	@echo "... rebuild_cache"
 	@echo "... ram_frontend.exe"
-	@echo "... install/strip"
+	@echo "... SPLIT_COMMIT"
+	@echo "... BYTEARRAYVEC"
+	@echo "... commit_test_snd"
+	@echo "... commit_test_rcv"
 	@echo "... install/local"
 	@echo "... edit_cache"
+	@echo "... rebuild_cache"
+	@echo "... install/strip"
+	@echo "... list_install_components"
 	@echo "... libBDX"
 	@echo "... libRAM"
+	@echo "... commitTestReceiver.o"
+	@echo "... commitTestReceiver.i"
+	@echo "... commitTestReceiver.s"
+	@echo "... commitTestSender.o"
+	@echo "... commitTestSender.i"
+	@echo "... commitTestSender.s"
+	@echo "... media/linuxstorage/git/SplitCommit/src/split-commit/split-commit-rec.o"
+	@echo "... media/linuxstorage/git/SplitCommit/src/split-commit/split-commit-rec.i"
+	@echo "... media/linuxstorage/git/SplitCommit/src/split-commit/split-commit-rec.s"
+	@echo "... media/linuxstorage/git/SplitCommit/src/split-commit/split-commit-snd.o"
+	@echo "... media/linuxstorage/git/SplitCommit/src/split-commit/split-commit-snd.i"
+	@echo "... media/linuxstorage/git/SplitCommit/src/split-commit/split-commit-snd.s"
+	@echo "... media/linuxstorage/git/SplitCommit/src/split-commit/split-commit.o"
+	@echo "... media/linuxstorage/git/SplitCommit/src/split-commit/split-commit.i"
+	@echo "... media/linuxstorage/git/SplitCommit/src/split-commit/split-commit.s"
+	@echo "... media/linuxstorage/git/SplitCommit/src/util/byte-array-vec.o"
+	@echo "... media/linuxstorage/git/SplitCommit/src/util/byte-array-vec.i"
+	@echo "... media/linuxstorage/git/SplitCommit/src/util/byte-array-vec.s"
 	@echo "... ramRunner/SimpleRunner.o"
 	@echo "... ramRunner/SimpleRunner.i"
 	@echo "... ramRunner/SimpleRunner.s"

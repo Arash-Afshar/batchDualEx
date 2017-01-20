@@ -137,7 +137,7 @@ namespace batchRam
         int prevLookupIdx;
         osuCrypto::Channel &chl;
         osuCrypto::Role role;
-        xhCoordinator::XHCCoordinator xhcCoordinator;
+        xhCoordinator::XHCCoordinator *xhcCoordinator;
         
         /**
          * The common part between initialUniversalInstruction and universalInstruction which takes care of setting the inputs

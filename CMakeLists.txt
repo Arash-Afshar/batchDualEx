@@ -35,6 +35,7 @@ endif()
 
 # Select flags.
 SET(CMAKE_CXX_FLAGS_RELEASE "-O3 -DNDEBUG")
+#SET(CMAKE_CXX_FLAGS_RELEASE "-O0 -g -DNDEBUG")
 SET(CMAKE_CXX_FLAGS_RELWITHDEBINFO "-O2 -g")
 SET(CMAKE_CXX_FLAGS_DEBUG  "-O0 -g")
 
@@ -67,14 +68,26 @@ include_directories("${NTL_Dir}/include")
 set(BOOST_ROOT "${libOTe_Dir}/thirdparty/linux/boost/")
 include_directories("${BOOST_ROOT}")
 
+# includes for XOR Homomorphic Commitment
+include_directories("${CMAKE_SOURCE_DIR}/../SplitCommit/src/")
+include_directories("${CMAKE_SOURCE_DIR}/../SplitCommit/libs/")
 
 
 
 #############################################
-#               Build libBDX                #
+#               Build libraries             #
 #############################################
 add_subdirectory(libBDX)
 add_subdirectory(libRAM)
+
+
+# Following are copied from SplitCommit/src/CMakeList.txt
+set(BYTEARRAYVEC_SRCS ${CMAKE_SOURCE_DIR}/../SplitCommit/src/util/byte-array-vec.cpp)
+add_library(BYTEARRAYVEC ${BYTEARRAYVEC_SRCS})
+
+set(SPLIT_COMMIT_SRCS ${CMAKE_SOURCE_DIR}/../SplitCommit/src/split-commit/split-commit.cpp ${CMAKE_SOURCE_DIR}/../SplitCommit/src/split-commit/split-commit-rec.cpp ${CMAKE_SOURCE_DIR}/../SplitCommit/src/split-commit/split-commit-snd.cpp)
+add_library(SPLIT_COMMIT ${SPLIT_COMMIT_SRCS})
+target_link_libraries(SPLIT_COMMIT BYTEARRAYVEC)
 
 #############################################
 #           Build libBDX Tests              #
@@ -100,15 +113,25 @@ include_directories(${CMAKE_SOURCE_DIR})
 file(GLOB_RECURSE SRC_RAMRUNNER ${CMAKE_SOURCE_DIR}/ramRunner/*.cpp)
 add_executable(ram_frontend.exe ${SRC_RAMRUNNER})
 
+
+add_executable(commit_test_snd ${CMAKE_SOURCE_DIR}/commitTestSender.cpp)
+add_executable(commit_test_rcv ${CMAKE_SOURCE_DIR}/commitTestReceiver.cpp)
+
 #############################################
 #            Install RAM Runner             #
 #############################################
 install (TARGETS ram_frontend.exe DESTINATION bin)
+install (TARGETS commit_test_rcv DESTINATION bin)
+install (TARGETS commit_test_snd DESTINATION bin)
 
 #############################################
 #            Link our libraries             #
 #############################################
 
+target_link_libraries(commit_test_snd SPLIT_COMMIT libRAM)
+target_link_libraries(commit_test_rcv SPLIT_COMMIT libRAM)
+
+target_link_libraries(SPLIT_COMMIT libRAM)
 
 target_link_libraries(ram_frontend.exe libRAM)
 # other libs implicitly linked with libRAM
