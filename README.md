@@ -16,22 +16,32 @@ This library has been tested and designed to work on both Windows and Linux.
 
 #### Windows
 
-On Windows the primary way to build the library is the provided Visual Studio Solution. Once the third party dependencies have been made, the solution should build the library, unit tests, and the frontend appliation. The third party dependencies include [Boost](http://www.boost.org/), [Crypto++](https://www.cryptopp.com/), [Miracl-SDK](http://www.miracl.com/miracl-sdk), [Mpir](http://mpir.org/), and [NTL](http://www.shoup.net/ntl/). For all but the NTL library, the repository contains powershell scripts to download and build them. These scripts are located in the ./thirdparty/win/ folder. Although there is a script called getNTL.ps1, it only downloads NTL but does not build it. To build NTL, users can either follow the instructions provided by NTL (using a emulated unix compiler) or use visual studio. 
+On Windows the primary way to build the library is the provided Visual Studio Solution. Once the third party dependencies have been made, the solution should build the library, unit tests, and the frontend appliation. The third party dependencies include [libOTe](https://github.com/osu-crypto/libOTe) and [NTL](http://www.shoup.net/ntl/). Please first clone/build libOTe next to where this repo is cloned to. Then use the getNTL.ps1 script located in the ./thirdparty/win/ folder to obtain NTL. 
 
-There are two location which the library by default looks for these dependencies, C:/libs/* and the relatitive directory ./thirdparty/win/. By default, the scripts will place the libraries in the folder in which they are executed. 
-
-For those who are curious, the Miracl-SDK script downloads a clone of the Miracl-SDK hosted on one of the author's github accounts. It contains a few modifications to the libraries configuration and a Visual Studio Solution to build the library. Any *Multi-threaded* build of the Miracl-SDK should work but it is advised to use the provided version.
+There are two location which the library by default looks for these dependencies, C:/libs/* and the relatitive directory ./thirdparty/win/. In addition, libOTe can be located ../libOTe
 
 #### Linux
 
-Building on linux consists of aquiring the dependencies and calling make. The dependencies include [Boost](http://www.boost.org/), [Crypto++](https://www.cryptopp.com/), [Miracl-SDK](http://www.miracl.com/miracl-sdk), [Mpir](http://mpir.org/), and [NTL](http://www.shoup.net/ntl/). The simplest way to obtain them is to call the all.get bash script on ./thirdparty/linux folder.
+Building on linux consists of aquiring the dependencies and calling `cmake -G "Unix Makefiles"; make;`. The dependencies include [libOTe](https://github.com/osu-crypto/libOTe) and [NTL](http://www.shoup.net/ntl/). The following commands should build the library and all dependencies 
 
-`cd ./thirdparty/linux`<br>
-`bash all.get`
+```
+git clone  --recursive https://github.com/osu-crypto/libOTe.git
+cd libOTe/thirdparty/linux
+bash all.get
+cd ../..
+cmake  -G "Unix Makefiles"
+make
+cd ..
+git clone https://github.com/osu-crypto/batchDualEx.git
+cd ./batchDualEx/thirdparty/linux
+bash ./ntl.get
+cd ../..
+cmake -G "Unix Makefiles"
+make
+```
 
-Once built, return to the root directory and call 
 
-`make`
+
 
 ## Usage
 
@@ -39,7 +49,7 @@ Once built, return to the root directory and call
 
 The unit tests can be run be executing
 
-`./Release/frontend.exe -u`
+`./bin/frontend.exe -u`
 
 When using Visual Studio, the is an additional project which integrates the tests into the Test Explorer. This window can be found under Tests->windows->Test Explorer. From here all the unit tests can be run. Note that if you get the following message
 
@@ -54,12 +64,12 @@ Also, the *ReadBris tests may fail if they can't find the circuit file. You can 
 
 The primary program can be run as a single executable. i.e.
 
-`./Release/frontend.exe`
+`./bin/frontend.exe`
 
 Or it can be run as two seperate programs where two programs perform each half of the protocol. In this case, call
 
-`./Release/frontend.exe -r 0 &`<br>
-`./Resease/frontend.exe -r 1`
+`./bin/frontend.exe -r 0 &`<br>
+`./bin/frontend.exe -r 1`
 
 Or call them in different terminals without the &. Many other parameters can be set too. This includes:
 * Port number (-p, --port = 1212)

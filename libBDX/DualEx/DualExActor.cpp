@@ -1069,7 +1069,11 @@ namespace osuCrypto
 
 			if (match)
 			{
+                bucket.mPsiResult = circuitIdx;
 				bucket.mOutputProm.set_value(&bucket.mOutputs[circuitIdx]);
+
+                //bucket.mCommonEvalOutput = std::move(bucket.mEvalOutput[circuitIdx]);
+                bucket.mCommonEvalOutput = (bucket.mEvalOutput[circuitIdx]);
 			}
 			else
 			{ 
