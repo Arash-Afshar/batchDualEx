@@ -1,13 +1,18 @@
 #define N    16
 #define LOGN 5
+#define HEIGHT 5
 #define ADDR 5
+#define ActualLOGN 4
+#define ActualADDR 4
 #define WORD 16
 #define Z    4
-#define INPS (Z * (2 * (LOGN - 1) + WORD + 1) * LOGN + (ADDR - 1)) * 2
-#define OUTS (Z * (2 * (LOGN - 1) + WORD + 1) * LOGN) * 2
+#define INPS (Z * (2 * (ActualLOGN) + WORD + 1) * HEIGHT + ActualADDR) * 2
+#define OUTS (Z * (2 * (ActualLOGN) + WORD + 1) * HEIGHT) * 2
 
 /*-------- LOGN and ADDR have been increased by 1 bit to define invalid values therefor LOGN already contains stash-----*/
 /*----- input should still be in correct format, internally we handle it with an extra bit ----*/
+/*----- check big/little indian setting ----*/
+
 #parties 2
 
 typedef uint_t INPS inputsize
@@ -185,17 +190,19 @@ function void main(){
 
     /*--------------------------*/
     currPathAddr{0:1} = 0;
-    currPathAddr{1:ADDR-1} = input1{0:ADDR-1};
-    ulong blockSize = 2 * (LOGN-1) + WORD + 1;
+    currPathAddr{1:ADDR-1} = input1{0:ActualADDR};
+    ulong blockSize = 2 * ActualLOGN + WORD + 1;
     ulong bucketSize = blockSize * Z;
-    for(ulong i=0; i<LOGN; i++){
-        ulong offset = ADDR - 1 + i * bucketSize;
+    for(ulong i=0; i<HEIGHT; i++){
+        ulong offset = ActualADDR + i * bucketSize;
         for(ulong j=0; j<Z; j++){
             ulong innerOffset = offset + j * blockSize;
-            buckets[i][j].dummy             = input1{innerOffset                       :1   };
-            buckets[i][j].addr{1:ADDR-1}    = input1{innerOffset + 1                   :ADDR-1};
-            buckets[i][j].leaf{1:ADDR-1}    = input1{innerOffset + 1 + ADDR-1          :ADDR-1};
-            buckets[i][j].content           = input1{innerOffset + 1 + ADDR-1 + ADDR-1 :WORD};
+            buckets[i][j].dummy             = input1{innerOffset                               :1   };
+            buckets[i][j].addr{1:ADDR-1}    = input1{innerOffset + 1                           :ActualADDR};
+            buckets[i][j].leaf{1:ADDR-1}    = input1{innerOffset + 1 + ActualADDR              :ActualADDR};
+            buckets[i][j].content           = input1{innerOffset + 1 + ActualADDR + ActualADDR :WORD};
+            buckets[i][j].addr{0:1}         = 0;
+            buckets[i][j].leaf{0:1}         = 0;
         }
     }
 
@@ -205,25 +212,28 @@ function void main(){
         ulong offset = i * bucketSize;
         for(ulong j=0; j<Z; j++){
             ulong innerOffset = offset + j * blockSize;
-            output1{innerOffset                   :1   } = updatedBuckets1[i][j].dummy;
-            output1{innerOffset + 1               :ADDR} = updatedBuckets1[i][j].addr;
-            output1{innerOffset + 1 + ADDR        :ADDR} = updatedBuckets1[i][j].leaf;
-            output1{innerOffset + 1 + ADDR + ADDR :WORD} = updatedBuckets1[i][j].content;
+            output1{innerOffset                               :1   }       = updatedBuckets1[i][j].dummy;
+            output1{innerOffset + 1                           :ActualADDR} = updatedBuckets1[i][j].addr{1:ActualADDR};
+            output1{innerOffset + 1 + ActualADDR              :ActualADDR} = updatedBuckets1[i][j].leaf{1:ActualADDR};
+            output1{innerOffset + 1 + ActualADDR + ActualADDR :WORD}       = updatedBuckets1[i][j].content;
         }
     }
 
 
     /*--------------------------*/
-    secondPathOffset = bucketSize * LOGN + ADDR - 1;
-    currPathAddr{1:ADDR-1} = input1{secondPathOffset:ADDR-1};
-    for(ulong i=0; i<LOGN; i++){
-        ulong offset = secondPathOffset + ADDR - 1 + i * bucketSize;
+    secondPathOffset = bucketSize * HEIGHT + ActualADDR;
+    currPathAddr{0:1} = 0;
+    currPathAddr{1:ActualADDR} = input1{secondPathOffset:ActualADDR};
+    for(ulong i=0; i<HEIGHT; i++){
+        ulong offset = secondPathOffset + ActualADDR + i * bucketSize;
         for(ulong j=0; j<Z; j++){
             ulong innerOffset = offset + j * blockSize;
-            buckets[i][j].dummy          = input1{innerOffset                       :1   };
-            buckets[i][j].addr{1:ADDR-1} = input1{innerOffset + 1                   :ADDR-1};
-            buckets[i][j].leaf{1:ADDR-1} = input1{innerOffset + 1 + ADDR-1          :ADDR-1};
-            buckets[i][j].content        = input1{innerOffset + 1 + ADDR-1 + ADDR-1 :WORD};
+            buckets[i][j].dummy          = input1{innerOffset                               :1   };
+            buckets[i][j].addr{1:ADDR-1} = input1{innerOffset + 1                           :ActualADDR};
+            buckets[i][j].leaf{1:ADDR-1} = input1{innerOffset + 1 + ActualADDR              :ActualADDR};
+            buckets[i][j].content        = input1{innerOffset + 1 + ActualADDR + ActualADDR :WORD};
+            buckets[i][j].addr{0:1}      = 0;
+            buckets[i][j].leaf{0:1}      = 0;
         }
     }
 
@@ -234,10 +244,10 @@ function void main(){
         ulong offset = secondPathOffset + i * bucketSize;
         for(ulong j=0; j<Z; j++){
             ulong innerOffset = offset + j * blockSize;
-            output1{innerOffset                   :1   } = updatedBuckets1[i][j].dummy;
-            output1{innerOffset + 1               :ADDR} = updatedBuckets1[i][j].addr;
-            output1{innerOffset + 1 + ADDR        :ADDR} = updatedBuckets1[i][j].leaf;
-            output1{innerOffset + 1 + ADDR + ADDR :WORD} = updatedBuckets1[i][j].content;
+            output1{innerOffset                               :1   }       = updatedBuckets2[i][j].dummy;
+            output1{innerOffset + 1                           :ActualADDR} = updatedBuckets2[i][j].addr{1:ActualADDR};
+            output1{innerOffset + 1 + ActualADDR              :ActualADDR} = updatedBuckets2[i][j].leaf{1:ActualADDR};
+            output1{innerOffset + 1 + ActualADDR + ActualADDR :WORD}       = updatedBuckets2[i][j].content;
         }
     }
 
