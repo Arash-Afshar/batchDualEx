@@ -1,0 +1,116 @@
+#define N    16
+#define LOGN 4
+#define ADDR 10
+#define WORD 24
+#define Z    4
+#define INPS 1079
+#define OUTS 1048
+
+#parties 2
+
+typedef int_t INPS inputsize
+typedef int_t OUTS outputsize
+typedef int_t ADDR address
+typedef int_t WORD data
+typedef int_t 1    bit
+typedef uint_t 10  int
+
+#input 1 inputsize
+#output 1 outputsize
+
+
+typedef struct_t entry{
+    address virtual;
+    address real;
+}
+
+typedef struct_t block{
+    address id;
+    data content;
+    address leaf;
+}
+
+function void main()
+{
+    bit operation;
+    data writeData;
+    entry lookup[N];
+    address looking;
+    address leafShare[2];
+    block branchBuckets[LOGN][Z];
+
+    data outReadData;
+
+    /*--------------------------*/
+    for(int i=0; i<LOGN; i++){
+        for(int j=0; j<Z; j++){
+            branchBuckets[i][j].id = input1{i*176:ADDR};
+            branchBuckets[i][j].content = input1{i*176+10:WORD};
+            branchBuckets[i][j].leaf = input1{i*176+34:ADDR};
+        }
+    }
+    for(int i=0; i<N; i++){
+        lookup[i].virtual = input1{704+i*20:ADDR};
+        lookup[i].real = input1{704+i*20+10:ADDR};
+    }
+    looking = input1{1024:ADDR};
+    leafShare[0] = input1{1034:ADDR};
+    leafShare[1] = input1{1044:ADDR};
+    writeData = input1{1054:WORD};
+    operation = input1{1078};
+
+    /*--------------------------*/
+    address newReal = leafShare[0] ^ leafShare[1];
+
+    block target;
+    for(int i=0; i<LOGN; i++){
+        for(int j=0; j<Z; j++){
+            if (branchBuckets[i][j].id == looking){
+                target = branchBuckets[i][j];
+                branchBuckets[i][j].id = 0;
+                branchBuckets[i][j].content = 0;
+                branchBuckets[i][j].leaf = 0;
+            }
+        }
+    }
+    for(int i=0; i<N; i++){
+        if(lookup[i].virtual == looking){
+            lookup[i].real = newReal;
+        }
+    }
+
+    target.leaf = newReal;
+    if(operation== 1){
+        target.content = writeData;
+        outReadData = 0;
+    }else{
+        outReadData = target.content;
+    }
+
+
+    bit flag = 0;
+    for(int i=0; i<Z; i++){
+        if(branchBuckets[0][i].id == 0){
+            if(flag == 0){
+                flag = 1#1;
+                branchBuckets[0][i] = target;
+            }
+        }
+    }
+
+
+    for(int i=0; i<LOGN; i++){
+        for(int j=0; j<Z; j++){
+            output1{i*176:ADDR} = branchBuckets[i][j].id;
+            output1{i*176+10:WORD} = branchBuckets[i][j].content;
+            output1{i*176+34:ADDR} = branchBuckets[i][j].leaf;
+        }
+    }
+    for(int i=0; i<N; i++){
+        output1{704+i*20:ADDR} = lookup[i].virtual;
+        output1{704+i*20+10:ADDR} = lookup[i].real;
+    }
+    output1{1024:24} = outReadData;
+
+
+}

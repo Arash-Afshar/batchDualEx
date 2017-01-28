@@ -1,0 +1,244 @@
+#define N    16
+#define LOGN 5
+#define ADDR 5
+#define WORD 16
+#define Z    4
+#define INPS (Z * (2 * (LOGN - 1) + WORD + 1) * LOGN + (ADDR - 1)) * 2
+#define OUTS (Z * (2 * (LOGN - 1) + WORD + 1) * LOGN) * 2
+
+/*-------- LOGN and ADDR have been increased by 1 bit to define invalid values therefor LOGN already contains stash-----*/
+/*----- input should still be in correct format, internally we handle it with an extra bit ----*/
+#parties 2
+
+typedef uint_t INPS inputsize
+typedef uint_t OUTS outputsize
+typedef uint_t WORD data
+typedef uint_t 1    bit
+typedef uint_t LOGN uint
+typedef uint_t 16   ulong
+
+#input 1 inputsize
+#output 1 outputsize
+
+
+typedef struct_t entry{
+    uint virtual;
+    uint real;
+}
+
+
+typedef struct_t block{
+    uint addr;
+    uint leaf;
+    bit dummy;
+    data content;
+}
+
+function uint deepestBlock(block bucket[Z], uint currPathAddr){
+    uint deepest = 0;
+    for(uint i = 0; i < Z; i++){
+        uint counter = 0;
+        for (uint j = 0; j < LOGN; j++){
+            uint index = LOGN - 1 - j;
+            if (currPathAddr{index} == bucket[i].leaf{index}){
+                counter++;
+            }
+        }
+        if (counter > deepest){
+            deepest = counter;
+        }
+    }
+    return deepest;
+}
+
+function uint getDeepestBlock(block bucket[Z], uint currPath){
+    uint deepest = 0;
+    uint indexToRemove = 0;
+    for(uint i = 0; i < Z; i++){
+        uint counter = 0;
+        for (uint j = 0; j < LOGN; j++){
+            uint index = LOGN - 1 - j;
+            if (currPath{index} == bucket[i].leaf{index}){
+                counter++;
+            }
+        }
+        if (counter > deepest){
+            deepest = counter;
+            indexToRemove = i;
+        }
+    }
+    return indexToRemove;
+}
+
+function bit hasEmpty(block bucket[Z]){
+    bit hasempty = 0;
+    for(uint i = 0; i < Z; i++){
+        if(bucket[i].dummy == 1){
+            hasempty = 1;
+        }
+    }
+    return hasempty;
+}
+
+
+function block[LOGN][Z] evictOnceFast(block buckets[LOGN][Z], uint currPathAddr){
+    uint deepest[LOGN];
+    uint target[LOGN];
+
+    uint src;
+    uint goal = 0;
+    uint l = 0;
+    uint dst;
+    block hold;
+    block towrite;
+    block invalid;
+    uint indexToRemove;
+
+    uint invalidAddr = 63#ADDR;
+
+    /* ------------------------ START of PrepareDeepest ---------- */
+    /*-------------- stash -------------*/
+    goal = 0#ADDR;
+    if (hasEmpty(buckets[0]) == 1){
+        src = 0;
+        goal = deepestBlock(buckets[0], currPathAddr);
+    }
+    /*-------------- TODO: check all index starts at 0 vs 1 -------------*/
+    for(uint i = 1; i < LOGN; i++){
+        if (goal >= i){
+            deepest[i] = src;
+        }
+        l = deepestBlock(buckets[i], currPathAddr);
+        if (l > goal){
+            goal = l;
+            src = i;
+        }
+    }
+
+    /* ------------------------ END   of PrepareDeepest ---------- */
+
+    /* ------------------------ START of PrepareTarget ---------- */
+    src = invalidAddr;
+    bit flag = 0;
+    for(uint j = 0; j < LOGN; j++){
+        uint i = LOGN - 1 - j;
+        if (i == src){
+            target[i] = dst;
+            dst = invalidAddr;
+            src = invalidAddr;
+        }
+        if (dst == invalidAddr ){
+            if (hasEmpty(buckets[i]) == 1){
+                flag = flag | 1#1;
+            }
+        }
+        if (target[i] != invalidAddr){
+            if (deepest[i] != invalidAddr){
+                flag = flag | 1#1;
+            }
+        }
+        if (flag == 1){
+            src = deepest[i];
+        }
+    }
+    /* ------------------------ END   of PrepareTarget ---------- */
+
+    /* ------------------------ START of Evicting ---------- */
+    dst = invalidAddr;
+    hold.leaf == invalidAddr;
+    for (uint i = 0; i < LOGN; i++){
+        towrite.leaf == invalidAddr;
+        if (hold.leaf != invalidAddr){
+            if(dst == i){
+                towrite = hold;
+                hold.leaf = invalidAddr;
+                dst = invalidAddr;
+            }
+        }
+        if (target[i] != invalidAddr){
+            indexToRemove = getDeepestBlock(buckets[i], currPathAddr);
+            for(uint knowIndex = 0; knowIndex < Z; knowIndex++){
+                if(knowIndex == indexToRemove){
+                    hold = buckets[i][knowIndex];
+                    buckets[i][knowIndex].dummy = 1;
+                }
+            }
+            dst = target[i];
+        }
+        if(towrite.leaf != invalidAddr){
+            for(uint emptyIndex = 0; emptyIndex < Z; emptyIndex++){
+                if(buckets[i][emptyIndex].dummy == 1){
+                    buckets[i][emptyIndex] = towrite;
+                }
+            }
+        }
+    }
+    return buckets;
+}
+
+function void main(){
+    block buckets[LOGN][Z]; /* The 0 is the stash */
+    block updatedBuckets1[LOGN][Z];
+    block updatedBuckets2[LOGN][Z];
+    uint  currPathAddr;
+    ulong secondPathOffset;
+
+    /*--------------------------*/
+    currPathAddr{0:1} = 0;
+    currPathAddr{1:ADDR-1} = input1{0:ADDR-1};
+    ulong blockSize = 2 * (LOGN-1) + WORD + 1;
+    ulong bucketSize = blockSize * Z;
+    for(ulong i=0; i<LOGN; i++){
+        ulong offset = ADDR - 1 + i * bucketSize;
+        for(ulong j=0; j<Z; j++){
+            ulong innerOffset = offset + j * blockSize;
+            buckets[i][j].dummy             = input1{innerOffset                       :1   };
+            buckets[i][j].addr{1:ADDR-1}    = input1{innerOffset + 1                   :ADDR-1};
+            buckets[i][j].leaf{1:ADDR-1}    = input1{innerOffset + 1 + ADDR-1          :ADDR-1};
+            buckets[i][j].content           = input1{innerOffset + 1 + ADDR-1 + ADDR-1 :WORD};
+        }
+    }
+
+    updatedBuckets1 = evictOnceFast(buckets, currPathAddr);
+
+    for(ulong i=0; i<LOGN; i++){
+        ulong offset = i * bucketSize;
+        for(ulong j=0; j<Z; j++){
+            ulong innerOffset = offset + j * blockSize;
+            output1{innerOffset                   :1   } = updatedBuckets1[i][j].dummy;
+            output1{innerOffset + 1               :ADDR} = updatedBuckets1[i][j].addr;
+            output1{innerOffset + 1 + ADDR        :ADDR} = updatedBuckets1[i][j].leaf;
+            output1{innerOffset + 1 + ADDR + ADDR :WORD} = updatedBuckets1[i][j].content;
+        }
+    }
+
+
+    /*--------------------------*/
+    secondPathOffset = bucketSize * LOGN + ADDR - 1;
+    currPathAddr{1:ADDR-1} = input1{secondPathOffset:ADDR-1};
+    for(ulong i=0; i<LOGN; i++){
+        ulong offset = secondPathOffset + ADDR - 1 + i * bucketSize;
+        for(ulong j=0; j<Z; j++){
+            ulong innerOffset = offset + j * blockSize;
+            buckets[i][j].dummy          = input1{innerOffset                       :1   };
+            buckets[i][j].addr{1:ADDR-1} = input1{innerOffset + 1                   :ADDR-1};
+            buckets[i][j].leaf{1:ADDR-1} = input1{innerOffset + 1 + ADDR-1          :ADDR-1};
+            buckets[i][j].content        = input1{innerOffset + 1 + ADDR-1 + ADDR-1 :WORD};
+        }
+    }
+
+    updatedBuckets2 = evictOnceFast(buckets, currPathAddr);
+
+    secondPathOffset = bucketSize * LOGN;
+    for(ulong i=0; i<LOGN; i++){
+        ulong offset = secondPathOffset + i * bucketSize;
+        for(ulong j=0; j<Z; j++){
+            ulong innerOffset = offset + j * blockSize;
+            output1{innerOffset                   :1   } = updatedBuckets1[i][j].dummy;
+            output1{innerOffset + 1               :ADDR} = updatedBuckets1[i][j].addr;
+            output1{innerOffset + 1 + ADDR        :ADDR} = updatedBuckets1[i][j].leaf;
+            output1{innerOffset + 1 + ADDR + ADDR :WORD} = updatedBuckets1[i][j].content;
+        }
+    }
+
+}
