@@ -56,21 +56,27 @@ namespace batchRam
     {
         
 //        lookup2PC.setXHCLib();
-
+        // TODO: perform two lookups
         
         std::cout << "going to create and run lookup & read" << std::endl;
-        lookup2PC = new Batch2PC(circ_path_prefix + "lookup.txt", role, xhcCoordinator, "lookup", 1, numExec, bucketSize, numOpened, psiSecParam, numConcurrentSetups, numConcurrentEvals, numThreadsPerEval);
-        read2PC = new Batch2PC(circ_path_prefix + "read.txt", role, xhcCoordinator, "read", 2, numExec, bucketSize, numOpened, psiSecParam, numConcurrentSetups, numConcurrentEvals, numThreadsPerEval);
+        lookup2PC = new Batch2PC(circ_path_prefix + "lookup.circ", role, xhcCoordinator, "lookup", 0, numExec, bucketSize, numOpened, psiSecParam, numConcurrentSetups, numConcurrentEvals, numThreadsPerEval);
+        read2PC = new Batch2PC(circ_path_prefix + "lookup.circ", role, xhcCoordinator, "read", 1, numExec, bucketSize, numOpened, psiSecParam, numConcurrentSetups, numConcurrentEvals, numThreadsPerEval);
 
         lookup2PC->initEvaluate();
         read2PC->initEvaluate();
-
+        
+        std::vector<std::vector<osuCrypto::block>> lookupGarbledOutputs(bucketSize);
+        std::vector<std::vector<osuCrypto::block>> readGarbledOutputs(bucketSize);
+        
         for (osuCrypto::u64 i = 0; i < static_cast<osuCrypto::u64>(numExec); i += numConcurrentEvals)
         {
-            lookup2PC->evaluate(i);
+            lookup2PC->evaluate(i, lookupGarbledOutputs);            
+        //print("out0: ", (uint8_t *)&lookupGarbledOutputs[0][0], 32);
             // get output of lookup and set input of read using dummy XHC (e.g. simple XOR)
-            read2PC->evaluate(i);
+            read2PC->evaluate(i, readGarbledOutputs);
         }
+        
+        
         lookup2PC->cleanup();
         read2PC->cleanup();        
     }
@@ -287,4 +293,16 @@ namespace batchRam
     {
         
     }
+    
+    void print(std::string desc, uint8_t *vec, int vec_num_entries)
+    {
+        std::ostringstream convert;
+        convert << desc << "\t";
+        for (int a = 0; a < vec_num_entries; a++) {
+            convert << std::uppercase << std::setfill('0') << std::setw(2) << std::hex << (int) vec[a];
+        }
+        std::string key_string = convert.str();
+        std::cout << key_string << std::endl;
+    }
+
 }

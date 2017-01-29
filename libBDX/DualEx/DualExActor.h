@@ -40,7 +40,7 @@ namespace osuCrypto
 		//std::unique_ptr<std::mutex[]> mMtxs;
                 xhCoordinator::XHCCoordinator xhcCoordinator;
 	public:
-
+                int mComputationId;
 		const Circuit& mCircuit;
 		KProbeMatrix mTheirKProbe, mMyKProbe;
 		const Role mRole;
@@ -81,7 +81,7 @@ namespace osuCrypto
 		void init(PRNG& prng, u64 numParallelInit, u64 numParallelEval, u64 numThreadsPerEval, Timer& timer);
 
 
-		BitVector execute(u64 evalIdx, PRNG& prng, const BitVector& input, Timer& timer);
+		BitVector execute(u64 evalIdx, PRNG& prng, const BitVector& input, Timer& timer, std::vector<std::vector<block>> &garbledOutputs);
 
 
 		void printTimes(std::string filename);

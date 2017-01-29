@@ -4,11 +4,11 @@
 
 #include <array>
 #include "cryptoTools/Common/Defines.h"
+#include "componentConfig.h"
 #include "XorHomomorphicCommit.h"
 #include "identity.h"
 #include "split-commit/split-commit-snd.h"
 #include "split-commit/split-commit-rec.h"
-
 
 namespace xhCoordinator
 {
@@ -26,7 +26,7 @@ namespace xhCoordinator
          * @param allInputLabels
          * @param id: identity of the bucket who has sent these values
          */
-        void commitToInput(std::vector<bool> permBit, std::vector<osuCrypto::block> allInputLabels, Identity id, osuCrypto::Role role, osuCrypto::Channel &send_channel);
+        void commitToInput(std::vector<bool> permBit, std::vector<osuCrypto::block> allInputLabels, Identity id, osuCrypto::Channel &send_channel);
         
         /**
          * Behaves exactly as commitToInput but for output wires
@@ -35,34 +35,66 @@ namespace xhCoordinator
          * @param allOutputLabels
          * @param id
          */
-        void commitToOutput(std::vector<bool> permBit, std::vector<std::array<osuCrypto::block, 2> > allOutputLabels, Identity id);
-        
+        void commitToOutput(std::vector<bool> permBit, std::vector<osuCrypto::block> allOutputLabels, Identity id, osuCrypto::Channel &send_channel);
+
         /**
          * Receives the input commitments
-         * 
          * @param id
+         * @param inputSize
+         * @param rec_channel
          */
-        void receiveInputCommitments(Identity id, osuCrypto::Role role, int inputSize, osuCrypto::Channel &rec_channel);
+        void receiveInputCommitments(Identity id, int inputSize, osuCrypto::Channel &rec_channel);
         
         /**
          * Receives the output commitments
          * @param id
+         * @param outputSize
+         * @param rec_channel
          */
-        void receiveOutputCommitments(Identity id);
+        void receiveOutputCommitments(Identity id, int outputSize, osuCrypto::Channel &rec_channel);
         
     private:
         ctpl::thread_pool *thread_pool;
         std::vector<BYTEArrayVector> rec_commit_shares;
         std::vector<std::array<BYTEArrayVector, 2> > send_commit_shares;
         osuCrypto::BtEndpoint *end_point;
+//        std::array<BYTEArrayVector, 2> random_commitments;
+        // these are hard coded configs
+        // TODO: should be configured in config.cpp and accessed here
+        int startInRandCommit[4];
+        int perCircuitSize[4];
+        int perInputSize[4];
+        int outputStartOffset[4];
 
-        void randomSenderCommits(std::vector<SplitCommitSender> &senders, osuCrypto::Role role, int num_execs, int num_commits);
-        void randomReceiverCommits(std::vector<SplitCommitReceiver> &receivers, std::vector<osuCrypto::PRNG> &exec_rnds, osuCrypto::Role role, int num_execs, int num_commits);
+        void sendeRandomCommits(std::vector<SplitCommitSender> &senders, osuCrypto::Role role, int num_execs, int num_commits);
+        void receiveRandomCommits(std::vector<SplitCommitReceiver> &receivers, std::vector<osuCrypto::PRNG> &exec_rnds, osuCrypto::Role role, int num_execs, int num_commits);
+        /**
+         * The underlying function for both commitToInput and CommitToOutput
+         * @param permBit
+         * @param allLabels
+         * @param id
+         * @param send_channel
+         * @param isInput
+         */
+        void commitToIO(std::vector<bool> permBit, std::vector<osuCrypto::block> allLabels, Identity id, osuCrypto::Channel &send_channel, bool isInput, std::vector<uint8_t> &actualIOCommitments);
 
+        /**
+         * Returns the random shares needed for committing to 0-key and 1-key  and also the permutation bit. Therefore, output is an array of length 3 * 2 = 6
+         * 
+         * @param id
+         * @param wireIndx
+         * @param isInput
+         * @param output
+         */
+        void getRandomCommitment(Identity id, int wireIndx, bool isInput, std::array<uint8_t *, 6> &output);
+        
     }; 
     
     
     void xorUI8s(std::vector<uint8_t> &ret, int pos, uint8_t *vec1, int vec1_size, uint8_t *vec2, int vec2_size);
+    void xorUI8s(std::vector<uint8_t> &ret, int pos, int length, uint8_t *vec2, int vec2_size);
+    void print(std::string desc, uint8_t *vec, int vec_num_entries);
+    std::string chlIdStr(std::string name, osuCrypto::Role role, bool isSender, bool isFrom);
 
 
     

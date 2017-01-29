@@ -28,11 +28,6 @@ namespace osuCrypto
 	Bucket::~Bucket()
 	{
 	}
-
-        void Bucket::setIdentity(Identity id)
-        {
-            mId = id;
-        }
         
 	void Bucket::initRecv(
 		const Circuit& cir,
@@ -484,8 +479,8 @@ namespace osuCrypto
 		chl.recv(label, cir.Inputs()[1 ^ role] * sizeof(block));
                 
                 // For RAM integration, receive the input and perm bit commitments
-                mId.circuitOffset = b;
-                xhcCoordinator.receiveInputCommitments(mId, role, cir.Inputs()[1 ^ role], chl);
+//                mId.circuitOffset = b;
+//                xhcCoordinator.receiveInputCommitments(mId, role, cir.Inputs()[1 ^ role], chl);
 
 		timer.setTimePoint("theirInputs");
 		//{
@@ -697,8 +692,8 @@ namespace osuCrypto
 			//chl.asyncSend(myLabels, cir.Inputs()[role] * sizeof(block));
 			chl.asyncSend(std::move(buff));
                         
-                        mId.circuitOffset = cirIdx;
-                        xhcCoordinator.commitToInput(permBit, allInputLabels, mId, role, chl);
+//                        mId.circuitOffset = cirIdx;
+//                        xhcCoordinator.commitToInput(permBit, allInputLabels, mId, role, chl);
 		}
 
 
@@ -867,8 +862,8 @@ namespace osuCrypto
             throw std::runtime_error("Expecting dest to have the correct size.\n " LOCATION);
 #endif // !NDEBUG
 
-
-        memcpy(dest.data(), mEvalOutput.data(), dest.size() * sizeof(block));
+        
+        memcpy(dest.data(), mEvalOutput[circuitIdx].data(), dest.size() * sizeof(block));
 
     }
 

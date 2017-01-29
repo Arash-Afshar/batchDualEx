@@ -73,15 +73,11 @@ namespace osuCrypto
 		//mEvalIdx(0),
 		mCnCCommitRecvDone(false),
 		mBuckets(numExes),
-		mOnlineFuture(mOnlineProm.get_future())
+		mOnlineFuture(mOnlineProm.get_future()),
+                mComputationId(computationId)
 	{
 		if (cir.Inputs()[0] == 0 || cir.Inputs()[1] == 0)
 			throw std::runtime_error("There are better protocols for such things...");
-                for(int i = 0; i < numExes; i++)
-                {
-                    Identity id(name, computationId, i);
-                    mBuckets[i].setIdentity(id);
-                }
 	}
 
 
@@ -534,6 +530,8 @@ namespace osuCrypto
 		// get their circuits, my K-prone input wire label commitments and output label commitments.
 		for (u64 i = startIdx; i < endIdx; i++)
 		{
+                        Identity id(mComputationId, i, mRole);
+                        mTheirCircuits[i].setIdentity(id);
 			mTheirCircuits[i].init(mCircuit, mMyKProbe, chl, xhcCoordinator, i);
 		}
 
@@ -709,6 +707,8 @@ namespace osuCrypto
 		for (u64 i = startIdx; i < endIdx; i++)
 		{
 #ifdef ADAPTIVE_SECURE
+                        Identity id(mComputationId, i, mRole);
+                        mMyCircuits[i].setIdentity(id);
 			mMyCircuits[i].init(mCircuit, mRole, prng, chl, xhcCoordinator, i, mTheirKProbe, wireBuff, mIndexArray, adaptiveSecureTableMasks);
 #else
 			mMyCircuits[i].init(mCircuit, mRole, prng, chl, i, wireBuff);
@@ -803,7 +803,7 @@ namespace osuCrypto
 	}
 
 
-	BitVector DualExActor::execute(u64 evalIdx, PRNG& prng, const BitVector & input, Timer& timer)
+	BitVector DualExActor::execute(u64 evalIdx, PRNG& prng, const BitVector & input, Timer& timer, std::vector<std::vector<block>> &garbledOutputs)
 	{
 		//u64 evalIdx = mEvalIdx++;
 		u64 bufferOffset = evalIdx % mLabels.size();
@@ -843,7 +843,12 @@ namespace osuCrypto
         outGen.ecbEncBlocks(mIndexArray.data(), mOutLabels[bufferOffset].size(), mOutLabels[bufferOffset].data());
 
 		bucket.mTheirOutputLabelsProm.set_value(&mOutLabels[bufferOffset]);
-
+                
+                // return the garbled outputs
+                for(int circOutIndex=0; circOutIndex < mBucketSize; circOutIndex++){
+                    garbledOutputs[circOutIndex].resize(mCircuit.Outputs().size());
+                    bucket.getGarbledOutput(circOutIndex, garbledOutputs[circOutIndex]);
+                }
 #ifndef PARALLEL_PSI
 
 		u64 idx = (u64)-1;

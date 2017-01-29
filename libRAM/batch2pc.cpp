@@ -29,6 +29,7 @@ namespace batchRam
 
     Batch2PC::Batch2PC(std::string circ_path, osuCrypto::Role role, xhCoordinator::XHCCoordinator xhcCoordinator, std::string name, int id, int numExec, int bucketSize, int numOpened, int psiSecParam, int numConcurrentSetups, int numConcurrentEvals, int numThreadsPerEval)
     :
+    computationId(id),
     mRole(role)
     {
         read_circuit(cir, circ_path);
@@ -36,7 +37,7 @@ namespace batchRam
         
         std::cout << "     --> Net init" << std::endl;
 	ios = new osuCrypto::BtIOService(0);
-        netMgr = new osuCrypto::BtEndpoint(*ios, "127.0.0.1", 1212 + id, mRole, "ss");
+        netMgr = new osuCrypto::BtEndpoint(*ios, "127.0.0.1", 1212 + id + 1, mRole, "ss");
         actor = new osuCrypto::DualExActor(cir, mRole, numExec, bucketSize, numOpened, psiSecParam, xhcCoordinator, name, computationId, *netMgr);
 	prng = new osuCrypto::PRNG(_mm_set_epi64x(0, mRole));
 
@@ -74,9 +75,9 @@ namespace batchRam
     }
     
     void
-    Batch2PC::evaluate(osuCrypto::u64 bucketIdx)
+    Batch2PC::evaluate(osuCrypto::u64 bucketIdx, std::vector<std::vector<osuCrypto::block>> &garbledOutputs)
     { 
-        actor->execute(bucketIdx, *prng2, input, timer);        
+        actor->execute(bucketIdx, *prng2, input, timer, garbledOutputs);
     }
     
     void

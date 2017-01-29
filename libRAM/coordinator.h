@@ -15,6 +15,10 @@
 
 namespace batchRam
 {
+    
+    void print(std::string desc, uint8_t *vec, int vec_num_entries);
+    
+    
     class Coordinator
     {
     public:

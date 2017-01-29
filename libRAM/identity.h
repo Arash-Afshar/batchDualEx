@@ -13,14 +13,15 @@
 class Identity
 {
 public:
-    std::string mName;
+//    std::string mName;
     int mComputationId;
     int mbBucketId;
     int circuitOffset;
+    osuCrypto::Role mRole;
     
     Identity()
     :
-    mName("NA"),
+//    mName("NA"),
     mComputationId(-1),
     mbBucketId(-1),
     circuitOffset(-1)
@@ -28,12 +29,13 @@ public:
         
     }
     
-    Identity(std::string name, int computationId, int bucketId)
+    Identity(int computationId, int circuitId, osuCrypto::Role role)
     :
-    mName(name),
+//    mName(name),
     mComputationId(computationId),
-    mbBucketId(bucketId),
-    circuitOffset(-1)
+    mbBucketId(-1),
+    circuitOffset(circuitId),
+    mRole(role)
     {
         
     }

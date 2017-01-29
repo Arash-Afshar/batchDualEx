@@ -3,26 +3,35 @@
 namespace xhCoordinator
 {
     
-    std::string chlIdStr(std::string name, osuCrypto::Role role, bool isSender, bool isFrom)
-    {
-        std::string channelIdStr(name);
-        if (isSender)
-            if (isFrom)
-                channelIdStr += osuCrypto::ToString(role) + osuCrypto::ToString(role);
-            else
-                channelIdStr += osuCrypto::ToString(role) + osuCrypto::ToString(1 - role);
-        else
-            if (isFrom)
-                channelIdStr += osuCrypto::ToString(1 - role) + osuCrypto::ToString(role);
-            else
-                channelIdStr += osuCrypto::ToString(1 - role) + osuCrypto::ToString(1 - role);            
-        return channelIdStr;
-    }
     
     XHCCoordinator::XHCCoordinator(int num_commits, osuCrypto::Role role)
     {
         int port = 28001;
-        int num_execs = 1; // TODO: should be a separate parameter read from user
+        int num_execs = 4; // TODO: should be a separate parameter read from user
+        
+        // TODO: input is expanded due to kprob ---> add correct input size
+        perInputSize[0] = 256 * 3;
+        perInputSize[1] = 256 * 3;
+        perInputSize[2] = -100000 * 3;
+        perInputSize[3] = -100000 * 3;
+
+        perCircuitSize[0] = perInputSize[0] + 128 * 3;
+        perCircuitSize[1] = perInputSize[1] + 128 * 3;
+        perCircuitSize[2] = perInputSize[2] + -100000 * 3;
+        perCircuitSize[3] = perInputSize[3] + -100000 * 3;
+
+        startInRandCommit[0] = 0;
+        startInRandCommit[1] = perCircuitSize[0] * 100;
+        startInRandCommit[2] = perCircuitSize[1] * 100;
+        startInRandCommit[3] = -1000000;
+        
+        outputStartOffset[0] = 33744;
+        outputStartOffset[1] = 33744;
+        outputStartOffset[2] = -1000000;
+        outputStartOffset[3] = -1000000;
+        
+        
+        num_commits = startInRandCommit[2]; // TODO changed it to match 3 + whatever 3 has
         std::string ip_address = "localhost"; // TODO: should be input parameter and the same as the one passed as program's input argument
 
         std::vector<std::future<void>> futures(2);
@@ -42,7 +51,7 @@ namespace xhCoordinator
             
             std::vector<SplitCommitSender> senders(num_execs);
             base_sender.GetCloneSenders(num_execs, senders);
-            randomSenderCommits( senders, role, num_execs, num_commits);
+            sendeRandomCommits( senders, role, num_execs, num_commits);
             
             send_ot_channel.close();            
         });
@@ -58,7 +67,7 @@ namespace xhCoordinator
             std::vector<SplitCommitReceiver> receivers(num_execs);
             std::vector<osuCrypto::PRNG> exec_rnds(num_execs);
             base_receiver.GetCloneReceivers(num_execs, rnd, receivers, exec_rnds);
-            randomReceiverCommits(receivers, exec_rnds, role, num_execs, num_commits);
+            receiveRandomCommits(receivers, exec_rnds, role, num_execs, num_commits);
 
             rec_ot_channel.close();            
         });
@@ -71,14 +80,12 @@ namespace xhCoordinator
     }
     
     void
-    XHCCoordinator::randomSenderCommits(std::vector<SplitCommitSender> &senders, osuCrypto::Role role, int num_execs, int num_commits)
+    XHCCoordinator::sendeRandomCommits(std::vector<SplitCommitSender> &senders, osuCrypto::Role role, int num_execs, int num_commits)
     {
         std::vector<osuCrypto::Channel*> send_channels;
         for (int e = 0; e < num_execs; ++e) {            
             send_channels.emplace_back(&end_point->addChannel(chlIdStr("commit_channel_" + std::to_string(e), role, true, true), chlIdStr("commit_channel_" + std::to_string(e), role, true, false)));
         }
-
-//        ctpl::thread_pool thread_pool(std::thread::hardware_concurrency());
 
         std::vector<std::future<void> > futures(num_execs);
         uint32_t exec_num_commits = CEIL_DIVIDE(num_commits, num_execs);
@@ -102,7 +109,7 @@ namespace xhCoordinator
     }
     
     void
-    XHCCoordinator::randomReceiverCommits(std::vector<SplitCommitReceiver> &receivers, std::vector<osuCrypto::PRNG> &exec_rnds, osuCrypto::Role role, int num_execs, int num_commits)
+    XHCCoordinator::receiveRandomCommits(std::vector<SplitCommitReceiver> &receivers, std::vector<osuCrypto::PRNG> &exec_rnds, osuCrypto::Role role, int num_execs, int num_commits)
     {
         uint32_t exec_num_commits = CEIL_DIVIDE(num_commits, num_execs);
 //        ctpl::thread_pool thread_pool(std::thread::hardware_concurrency());
@@ -127,39 +134,111 @@ namespace xhCoordinator
     }
     
     void
-    XHCCoordinator::commitToInput(std::vector<bool> permBit, std::vector<osuCrypto::block> allInputLabels, Identity id, osuCrypto::Role role, osuCrypto::Channel &send_channel)
+    XHCCoordinator::getRandomCommitment(Identity id, int wireIndx, bool isInput, std::array<uint8_t *, 6> &output)
     {
-        std::vector<uint8_t> inputCommitments(allInputLabels.size() * CODEWORD_BYTES);
-        int pos = -1;
-        for(uint64_t wire = 0; wire < allInputLabels.size(); wire++)
-        {
-            BYTEArrayVector tmp = send_commit_shares[0][0];// = getRandomCommitment(id, wire, true);
-            pos = 2 * wire * CODEWORD_BYTES;
-            xorUI8s(inputCommitments, pos, tmp[0], tmp.entry_size(), (uint8_t*) &allInputLabels[2 * wire], CSEC_BYTES);
-            pos += CODEWORD_BYTES;
-            xorUI8s(inputCommitments, pos, tmp[1], tmp.entry_size(), (uint8_t*) &allInputLabels[2 * wire + 1], CSEC_BYTES);
+        assert(id.circuitOffset != -1);
+        assert(id.mComputationId != -1);
+        
+        int computationOffset = startInRandCommit[id.mComputationId];
+        int circuitOffest = id.circuitOffset * perCircuitSize[id.mComputationId];
+        int ioOffset;
+        int wireOffset;
+        
+        if (isInput){
+            ioOffset = 0;
+            wireOffset = 3 * wireIndx;
+        }else{
+            ioOffset = perInputSize[id.mComputationId];
+            int outputStart = wireIndx; // TODO: outputStartOffset[id.mComputationId];
+            wireOffset =  3 * (wireIndx - outputStart);
         }
+        int pos = computationOffset + circuitOffest + ioOffset + wireOffset;
+        
+        int num_of_exec = send_commit_shares.size();
+        int commits_per_exec = send_commit_shares[0][0].size();
 
-        send_channel.asyncSend(inputCommitments.data(), sizeof(uint8_t) * inputCommitments.size());
+        for (int i = 0; i < 3; i++){
+            int exec = -1;
+            int offset = -1;
+            for (int e = 0; e < num_of_exec; e++){
+                if (pos + i < (e + 1) * commits_per_exec){
+                    exec = e;
+                    offset = pos + i - e * commits_per_exec;
+                    break;
+                }
+            }
+//            std::cout << "pos: " << pos << ", exec: " << exec << ", offset: " << offset << ", of "  << commits_per_exec << std::endl;
+            output[2 * i + 0] = send_commit_shares[exec][0][offset];
+            output[2 * i + 1] = send_commit_shares[exec][1][offset];
+        }
+        
     }
     
     void
-    XHCCoordinator::receiveInputCommitments(Identity id, osuCrypto::Role role, int inputSize, osuCrypto::Channel &rec_channel)
+    XHCCoordinator::commitToInput(std::vector<bool> permBit, std::vector<osuCrypto::block> allInputLabels, Identity id, osuCrypto::Channel &send_channel)
     {
-        std::vector<uint8_t> inputCommitments(inputSize * 2 * CODEWORD_BYTES);
+        std::vector<uint8_t> inputCommitments;
+        commitToIO(permBit, allInputLabels, id, send_channel, true, inputCommitments);
+    }
+    
+    void
+    XHCCoordinator::receiveInputCommitments(Identity id, int inputSize, osuCrypto::Channel &rec_channel)
+    {
+        std::vector<uint8_t> inputCommitments(inputSize * 2 * 3 * CODEWORD_BYTES);
         rec_channel.recv(inputCommitments.data(), sizeof(uint8_t) * inputCommitments.size());
     }
-    
-    void
-    XHCCoordinator::commitToOutput(std::vector<bool> permBit, std::vector<std::array<osuCrypto::block, 2> > allOutputLabels, Identity id)
-    {
         
+    void
+    XHCCoordinator::commitToOutput(std::vector<bool> permBit, std::vector<osuCrypto::block> allOutputLabels, Identity id, osuCrypto::Channel &send_channel)
+    {
+        std::vector<uint8_t> outputCommitments;
+        commitToIO(permBit, allOutputLabels, id, send_channel, false, outputCommitments);
+    }
+
+    void
+    XHCCoordinator::receiveOutputCommitments(Identity id, int outputSize, osuCrypto::Channel &rec_channel)
+    {
+        std::vector<uint8_t> outputCommitments(outputSize * 2 * 3 * CODEWORD_BYTES);
+        rec_channel.recv(outputCommitments.data(), sizeof(uint8_t) * outputCommitments.size());
     }
     
     void
-    XHCCoordinator::receiveOutputCommitments(Identity id)
+    XHCCoordinator::commitToIO(std::vector<bool> permBit, std::vector<osuCrypto::block> allLabels, Identity id, osuCrypto::Channel &send_channel, bool isInput, std::vector<uint8_t> &actualIOCommitments)
     {
-        
+        actualIOCommitments.resize((allLabels.size()/2) * 2 * 3 * CODEWORD_BYTES);
+        int pos = -1;
+        for(uint64_t wire = 0; wire < allLabels.size() / 2; wire++)
+        {
+            std::array<uint8_t *, 6> randCommit;
+            getRandomCommitment(id, wire, isInput, randCommit);
+//            std::cout << wire << ", of " << actualIOCommitments.size() << ": " << id.circuitOffset << ": " << id.mComputationId << std::endl;
+//            print("rand[0]:--->", randCommit[0], CODEWORD_BYTES);
+            
+            int b = 0;
+            if(permBit[wire] == true){
+                b = 1;
+            }
+            uint8_t bit = b;
+            // commit to 0-key
+            pos = 6 * wire * CODEWORD_BYTES;
+            xorUI8s(actualIOCommitments, pos, randCommit[0], CODEWORD_BYTES, randCommit[1], CODEWORD_BYTES);
+            pos += CODEWORD_BYTES;
+            xorUI8s(actualIOCommitments, pos, CODEWORD_BYTES, (uint8_t*) &allLabels[2 * wire + b], CSEC_BYTES);
+
+            // commit to 1-key
+            pos += CODEWORD_BYTES;
+            xorUI8s(actualIOCommitments, pos, randCommit[2], CODEWORD_BYTES, randCommit[3], CODEWORD_BYTES);
+            pos += CODEWORD_BYTES;
+            xorUI8s(actualIOCommitments, pos, CODEWORD_BYTES, (uint8_t*) &allLabels[2 * wire + 1 - b], CSEC_BYTES);
+            
+            // commit to perm bit
+            pos += CODEWORD_BYTES;
+            xorUI8s(actualIOCommitments, pos, randCommit[4], CODEWORD_BYTES, randCommit[5], CODEWORD_BYTES);
+            pos += CODEWORD_BYTES;
+            xorUI8s(actualIOCommitments, pos, CODEWORD_BYTES, &bit, 1);
+        }
+
+        send_channel.asyncSend(actualIOCommitments.data(), sizeof(uint8_t) * actualIOCommitments.size());
     }
     
     osuCrypto::block
@@ -209,9 +288,53 @@ namespace xhCoordinator
         {
     //        print(ret.data(), vec_long_size);
             if (i < vec_small_size)
-                ret[i] = vec_long[i] ^ vec_small[i];
+                ret[pos + i] = vec_long[i] ^ vec_small[i];
             else
-                ret[i] = vec_long[i];
+                ret[pos + i] = vec_long[i];
         }
     }
+    
+    void
+    xorUI8s(std::vector<uint8_t> &ret, int pos, int length, uint8_t *vec2, int vec2_size)
+    {
+        assert(length >= vec2_size);
+        for (int i = 0; i < length; i++)
+        {
+    //        print(ret.data(), vec_long_size);
+            if (i < vec2_size)
+                ret[pos + i] = ret[pos + i] ^ vec2[i];
+            else
+                ret[pos + i] = ret[pos + i];
+        }
+    }
+    
+    void
+    print(std::string desc, uint8_t *vec, int vec_num_entries)
+    {
+        std::ostringstream convert;
+        convert << desc << "\t";
+        for (int a = 0; a < vec_num_entries; a++) {
+            convert << std::uppercase << std::setfill('0') << std::setw(2) << std::hex << (int) vec[a];
+        }
+        std::string key_string = convert.str();
+        std::cout << key_string << std::endl;
+    }
+
+    std::string
+    chlIdStr(std::string name, osuCrypto::Role role, bool isSender, bool isFrom)
+    {
+        std::string channelIdStr(name);
+        if (isSender)
+            if (isFrom)
+                channelIdStr += osuCrypto::ToString(role) + osuCrypto::ToString(role);
+            else
+                channelIdStr += osuCrypto::ToString(role) + osuCrypto::ToString(1 - role);
+        else
+            if (isFrom)
+                channelIdStr += osuCrypto::ToString(1 - role) + osuCrypto::ToString(role);
+            else
+                channelIdStr += osuCrypto::ToString(1 - role) + osuCrypto::ToString(1 - role);            
+        return channelIdStr;
+    }
+    
 }

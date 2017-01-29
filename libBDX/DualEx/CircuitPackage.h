@@ -68,9 +68,11 @@ namespace osuCrypto {
 
 		std::promise<void> mOTInitDoneProm;
 		std::future<void> mOTInitDoneFutr;
+                void setIdentity(Identity id);
 
 
 	private:
+                Identity mId;
 		void commitToInputs(
 			const Circuit& cir,
 			const KProbeMatrix& myKProbe, 
@@ -133,9 +135,11 @@ namespace osuCrypto {
 		u64 mIdx;
 		HalfGtGarbledCircuit mCircuit;
 		const block& OTSendMsg(u64 idx, u8 bit)const; 
+                void setIdentity(Identity id);
 	private:
 		const BDX_OTExtSender* mOTSend;
 		u64 mOTStartIdx, mOTCount;
+                Identity mId;
 	public: 
 		Commit mOutputCommit;
 		std::vector<std::array<Commit, 2>> mTheirInputCommits, mMyKProbeInputCommit;

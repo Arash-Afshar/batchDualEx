@@ -20,15 +20,11 @@ namespace osuCrypto
 {
 	class Bucket
 	{
-        private:
-            Identity mId;
             
 	public:
 		Bucket();
 		~Bucket();
                 
-                void setIdentity(Identity id);
-
 		void initRecv(
 			const Circuit& cir,
 			Channel& chl,
