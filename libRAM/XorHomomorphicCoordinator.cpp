@@ -5,6 +5,8 @@ namespace xhCoordinator
     
     
     XHCCoordinator::XHCCoordinator(int num_commits, osuCrypto::Role role)
+    :
+    mRole(role)
     {
         int port = 28001;
         int num_execs = 4; // TODO: should be a separate parameter read from user
@@ -37,50 +39,54 @@ namespace xhCoordinator
         std::vector<std::future<void>> futures(2);
         thread_pool = new ctpl::thread_pool(std::thread::hardware_concurrency());
 
-        osuCrypto::BtIOService ios(0);
-        end_point = new osuCrypto::BtEndpoint(ios, ip_address, port, role, "ep");
+        ios = new osuCrypto::BtIOService(0);
+        end_point = new osuCrypto::BtEndpoint(*ios, ip_address, port, role, "ep");
         osuCrypto::PRNG rnd;
 
         futures[0] = thread_pool->push([&](int id) {
-            osuCrypto::Channel& send_ot_channel = end_point->addChannel(chlIdStr("ot_channel", role, true, true), chlIdStr("ot_channel", role, true, false));
+            osuCrypto::Channel& send_channel = end_point->addChannel(chlIdStr("rand_commit_channel", role, true, true), chlIdStr("rand_commit_channel", role, true, false));
             rnd.SetSeed(load_block(constant_seeds[0].data()));
 
             SplitCommitSender base_sender;
             base_sender.SetMsgBitSize(128);
-            base_sender.ComputeAndSetSeedOTs(rnd, send_ot_channel);
+            base_sender.ComputeAndSetSeedOTs(rnd, send_channel);
             
-            std::vector<SplitCommitSender> senders(num_execs);
-            base_sender.GetCloneSenders(num_execs, senders);
-            sendeRandomCommits( senders, role, num_execs, num_commits);
+            senders = new std::vector<SplitCommitSender>(num_execs);
+            base_sender.GetCloneSenders(num_execs, *senders);
+            sendRandomCommits(*senders, role, num_execs, num_commits);
             
-            send_ot_channel.close();            
+            send_channel.close();            
         });
 
         futures[1] = thread_pool->push([&](int id) {
-            osuCrypto::Channel& rec_ot_channel = end_point->addChannel(chlIdStr("ot_channel", role, false, true), chlIdStr("ot_channel", role, false, false));
+            osuCrypto::Channel& rec_channel = end_point->addChannel(chlIdStr("rand_commit_channel", role, false, true), chlIdStr("rand_commit_channel", role, false, false));
             rnd.SetSeed(load_block(constant_seeds[1].data()));
 
             SplitCommitReceiver base_receiver;
             base_receiver.SetMsgBitSize(128);
-            base_receiver.ComputeAndSetSeedOTs(rnd, rec_ot_channel);
+            base_receiver.ComputeAndSetSeedOTs(rnd, rec_channel);
             
-            std::vector<SplitCommitReceiver> receivers(num_execs);
+            receivers = new std::vector<SplitCommitReceiver>(num_execs);
             std::vector<osuCrypto::PRNG> exec_rnds(num_execs);
-            base_receiver.GetCloneReceivers(num_execs, rnd, receivers, exec_rnds);
-            receiveRandomCommits(receivers, exec_rnds, role, num_execs, num_commits);
+            base_receiver.GetCloneReceivers(num_execs, rnd, *receivers, exec_rnds);
+            receiveRandomCommits(*receivers, exec_rnds, role, num_execs, num_commits);
 
-            rec_ot_channel.close();            
+            rec_channel.close();            
         });
 
         futures[0].wait();
         futures[1].wait();
 
+    }
+    
+    XHCCoordinator::~XHCCoordinator()
+    {
         end_point->stop();
-        ios.stop();
+        ios->stop();
     }
     
     void
-    XHCCoordinator::sendeRandomCommits(std::vector<SplitCommitSender> &senders, osuCrypto::Role role, int num_execs, int num_commits)
+    XHCCoordinator::sendRandomCommits(std::vector<SplitCommitSender> &senders, osuCrypto::Role role, int num_execs, int num_commits)
     {
         std::vector<osuCrypto::Channel*> send_channels;
         for (int e = 0; e < num_execs; ++e) {            
@@ -133,12 +139,10 @@ namespace xhCoordinator
         }
     }
     
+    
     void
-    XHCCoordinator::getRandomCommitment(Identity id, int wireIndx, bool isInput, std::array<uint8_t *, 6> &output)
+    XHCCoordinator::getPosInCommitShares(Identity id, int startOffset, int wireIndx, bool isInput, int &exec, int &offset)
     {
-        assert(id.circuitOffset != -1);
-        assert(id.mComputationId != -1);
-        
         int computationOffset = startInRandCommit[id.mComputationId];
         int circuitOffest = id.circuitOffset * perCircuitSize[id.mComputationId];
         int ioOffset;
@@ -152,24 +156,35 @@ namespace xhCoordinator
             int outputStart = wireIndx; // TODO: outputStartOffset[id.mComputationId];
             wireOffset =  3 * (wireIndx - outputStart);
         }
-        int pos = computationOffset + circuitOffest + ioOffset + wireOffset;
-        
+        int pos = computationOffset + circuitOffest + ioOffset + wireOffset + startOffset;
+
         int num_of_exec = send_commit_shares.size();
         int commits_per_exec = send_commit_shares[0][0].size();
 
+        for (int e = 0; e < num_of_exec; e++){
+            if (pos < (e + 1) * commits_per_exec){
+                exec = e;
+                offset = pos - e * commits_per_exec;
+                break;
+            }
+        }
+    }
+    
+    void
+    XHCCoordinator::getRandomCommitment(Identity id, int wireIndx, bool isInput, std::array<uint8_t *, 6> &output)
+    {
+        assert(id.circuitOffset != -1);
+        assert(id.mComputationId != -1);
+        
         for (int i = 0; i < 3; i++){
             int exec = -1;
             int offset = -1;
-            for (int e = 0; e < num_of_exec; e++){
-                if (pos + i < (e + 1) * commits_per_exec){
-                    exec = e;
-                    offset = pos + i - e * commits_per_exec;
-                    break;
-                }
-            }
-//            std::cout << "pos: " << pos << ", exec: " << exec << ", offset: " << offset << ", of "  << commits_per_exec << std::endl;
-            output[2 * i + 0] = send_commit_shares[exec][0][offset];
-            output[2 * i + 1] = send_commit_shares[exec][1][offset];
+            getPosInCommitShares(id, i, wireIndx, isInput, exec, offset);
+//            output[2 * i + 0] = send_commit_shares[exec][0][offset];
+//            output[2 * i + 1] = send_commit_shares[exec][1][offset];
+            // TODO, for the testing purposes, we use a fixed random commitment here
+            output[2 * i + 0] = send_commit_shares[0][0][0];
+            output[2 * i + 1] = send_commit_shares[0][1][0];
         }
         
     }
@@ -177,6 +192,12 @@ namespace xhCoordinator
     void
     XHCCoordinator::commitToInput(std::vector<bool> permBit, std::vector<osuCrypto::block> allInputLabels, Identity id, osuCrypto::Channel &send_channel)
     {
+        if(id.mComputationId == 1){
+            for(int i = 0; i < allInputLabels.size() / 2; i++){
+                print(std::to_string(i) + ":0:\t", (uint8_t*)&allInputLabels[2*i], 16);
+                print(std::to_string(i) + ":1:\t", (uint8_t*)&allInputLabels[2*i + 1], 16);
+            }
+        }
         std::vector<uint8_t> inputCommitments;
         commitToIO(permBit, allInputLabels, id, send_channel, true, inputCommitments);
     }
@@ -241,6 +262,81 @@ namespace xhCoordinator
         send_channel.asyncSend(actualIOCommitments.data(), sizeof(uint8_t) * actualIOCommitments.size());
     }
     
+    
+    void
+    XHCCoordinator::translateBucketHeads(Identity srcId, std::vector<int> outputWireIndexes, std::vector<osuCrypto::block> garbledOutputValue, Identity dstId, std::vector<int> inputWireIndexes, std::vector<osuCrypto::block> &garbledInputValue)
+    {
+        // send thread
+        // find the commitments on output, xor them with commitments on input, and send them
+        
+//        *senders[e].Decommit(send_commit_shares[e], *send_channel);
+        
+        // receive thread
+        assert(outputWireIndexes.size() == inputWireIndexes.size());
+
+        std::vector<uint8_t[CODEWORD_BYTES]> receivedXorCommitShares(3 * inputWireIndexes.size());
+        std::vector<std::future<void>> futures(2);
+
+        futures[0] = thread_pool->push([&](int id) {
+            osuCrypto::Channel& send_channel = end_point->addChannel(chlIdStr("decommit_channel", mRole, true, true), chlIdStr("decommit_channel", mRole, true, false));
+
+            std::vector<uint8_t[CODEWORD_BYTES]> outCommitShares(3 * outputWireIndexes.size());
+            std::vector<uint8_t[CODEWORD_BYTES]> inpCommitShares(3 * inputWireIndexes.size());
+            std::vector<uint8_t[CODEWORD_BYTES]> xorCommitShares(3 * inputWireIndexes.size());
+            
+            for(int j = 0; j < outputWireIndexes.size(); j++){
+                for (int i = 0; i < 3; i++){
+                    int exec = -1;
+                    int offset = -1;
+                    // TODO: for now manually send r0 \oplus r1 until Decommit is changed to open a subset of commitments
+//                    (*senders)[exec].Decommit(send_commit_shares[exec], send_channel);
+
+                    getPosInCommitShares(srcId, i, outputWireIndexes[j], false, exec, offset);
+        //            ... = send_commit_shares[exec][0][offset];
+        //            ... = send_commit_shares[exec][1][offset];
+                    // TODO, for the testing purposes, we use a fixed random commitment here
+                    XOR_CheckBits(outCommitShares[j * 3 + i], send_commit_shares[0][0][0], send_commit_shares[0][1][0]);
+
+                    getPosInCommitShares(dstId, i, inputWireIndexes[j], true, exec, offset);
+        //            ... = send_commit_shares[exec][0][offset];
+        //            ... = send_commit_shares[exec][1][offset];
+                    // TODO, for the testing purposes, we use a fixed random commitment here
+//                    input[0] = send_commit_shares[0][0][0];
+//                    input[1] = send_commit_shares[0][1][0];
+                    XOR_CheckBits(inpCommitShares[j * 3 + i], send_commit_shares[0][0][0], send_commit_shares[0][1][0]);
+                    
+                    
+                    XOR_CheckBits(xorCommitShares[j * 3 + i], inpCommitShares[j * 3 + i], outCommitShares[j * 3 + i]);
+
+                }
+            }
+            
+            send_channel.asyncSend(xorCommitShares.data(), sizeof(uint8_t[CODEWORD_BYTES]) * xorCommitShares.size());
+            send_channel.close();            
+        });
+
+        futures[1] = thread_pool->push([&](int id) {
+            osuCrypto::Channel& rec_channel = end_point->addChannel(chlIdStr("decommit_channel", mRole, false, true), chlIdStr("decommit_channel", mRole, false, false));
+            
+            rec_channel.recv(receivedXorCommitShares.data(), sizeof(uint8_t[CODEWORD_BYTES]) * receivedXorCommitShares.size());
+            
+            rec_channel.close();            
+        });
+
+        futures[0].wait();
+        futures[1].wait();
+        
+        garbledInputValue.resize(garbledOutputValue.size());
+        for(uint64_t i = 0; i < garbledInputValue.size(); i++){
+//        print("garbOut:\t", (uint8_t*)&src, 16);
+//        print("xorCommit:\t", vec2, CSEC_BYTES);
+            xorBlockWithUint8(garbledInputValue[i], garbledOutputValue[i], receivedXorCommitShares[i]);
+            print("garbIn:\t", (uint8_t*)&garbledInputValue[i], 16);
+        }
+        
+    }
+    
+    
     osuCrypto::block
     computeDelta(xhCoordinator::XorHomomorphicCommit srcXHCommitment, xhCoordinator::XorHomomorphicCommit dstXHCommitment)
     {
@@ -263,6 +359,19 @@ namespace xhCoordinator
     verify(std::vector<std::array<osuCrypto::block, 2> > deltas, std::vector<osuCrypto::block> pointNPermuteDeltas, std::vector<std::pair<osuCrypto::block, std::array<xhCoordinator::XorHomomorphicCommit, 2> > >  srcWireAndCommitments, std::vector<std::pair<osuCrypto::block, std::array<xhCoordinator::XorHomomorphicCommit, 2> > > dstWireAndCommitments)
     {
         
+    }
+    
+    void
+    xorBlockWithUint8(osuCrypto::block &dst, osuCrypto::block src, uint8_t *vec2)
+    {
+        int size = 16;
+        uint8_t *dstUint = (uint8_t*)&dst;
+        uint8_t *srcUint = (uint8_t*)&src;
+
+        for (int i = 0; i < size; i++)
+        {
+            dstUint[i] = vec2[i] ^ srcUint[i];
+        }
     }
     
     void

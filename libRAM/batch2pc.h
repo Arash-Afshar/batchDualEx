@@ -44,7 +44,7 @@ namespace batchRam
          */
         void prepareInputs(int bucketIdx);
         
-        void evaluate(osuCrypto::u64 bucketIdx, std::vector<std::vector<osuCrypto::block>> &garbledOutputs);
+        void evaluate(osuCrypto::u64 bucketIdx, std::vector<osuCrypto::block> &garbledOutputs);
         
         /**
          * Parse the output wires starting from the first output wire, O, to the output wire O+length and parse the result as a single number.
@@ -103,6 +103,11 @@ namespace batchRam
          * Close network connections
          */
         void cleanup();
+        
+        Identity getBucketHeadId(int bucketIdx);
+        
+        std::vector<int> getRelativeOutputWireIndexes();
+        std::vector<int> getRelativeInputWireIndexes();
         
     private:
         std::string name;

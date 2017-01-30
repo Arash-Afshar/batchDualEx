@@ -75,7 +75,7 @@ namespace batchRam
     }
     
     void
-    Batch2PC::evaluate(osuCrypto::u64 bucketIdx, std::vector<std::vector<osuCrypto::block>> &garbledOutputs)
+    Batch2PC::evaluate(osuCrypto::u64 bucketIdx, std::vector<osuCrypto::block> &garbledOutputs)
     { 
         actor->execute(bucketIdx, *prng2, input, timer, garbledOutputs);
     }
@@ -124,4 +124,33 @@ namespace batchRam
     {
         return "";
     }
+    
+    Identity
+    Batch2PC::getBucketHeadId(int bucketIdx)
+    {
+        return actor->getBucketHeadId(bucketIdx);
+    }
+    
+    std::vector<int>
+    Batch2PC::getRelativeOutputWireIndexes()
+    {
+        std::vector<int> fixme(128);
+        for (int i = 0; i < fixme.size(); i++) {
+            fixme[i] = i;
+        }
+        
+        return fixme;
+    }
+    
+    std::vector<int>
+    Batch2PC::getRelativeInputWireIndexes()
+    {
+        std::vector<int> fixme(128);
+        for (int i = 0; i < fixme.size(); i++) {
+            fixme[i] = i;
+        }
+        
+        return fixme;
+    }
+
 }

@@ -3,6 +3,8 @@
 #include "cryptoTools/Common/Timer.h"
 #include "cryptoTools/Common/ArrayView.h"
 
+// deleteme
+#include <fstream>
 //#define DUALEX_DEBUG  
 
 namespace osuCrypto
@@ -544,6 +546,18 @@ namespace osuCrypto
 		//std::cout << "evaluating cir" << mTheirCircuits[b]->mIdx << " from P" << (int)(1 - role) << std::endl;
 
 #ifdef ADAPTIVE_SECURE 
+                // TODO: deleteme! I am here just to test if input is passed correctly
+                std::ofstream logStream;
+                logStream.open("/tmp/batchLog/role-" + std::to_string(role) + "-circ-" + std::to_string(b) + "-comp-" + std::to_string(getHeadId().mComputationId) + ".txt");
+                logStream << "Role: " << role << "\n" << "Computation: " << getHeadId().mComputationId << "\n" << "bucket: ?\n" << "circuit: "  << b << "\n";
+                for(u64 ii=0; ii<labels.size(); ii++){
+                    logStream << ii << "\t";
+                    for (int aa = 0; aa < 16; aa++) {
+                        logStream << std::uppercase << std::setfill('0') << std::setw(2) << std::hex << (int) (((uint8_t*)&labels)[aa]);
+                    }
+                    logStream << "\n";
+                }
+                logStream.close();
 		mTheirCircuits[b]->mCircuit.evaluate(cir, labels, adaptiveSecureTableMasks);
 #else
 		mTheirCircuits[b]->mCircuit.evaluate(cir, labels);
@@ -826,6 +840,12 @@ namespace osuCrypto
 
 
 	}
+
+    Identity
+    Bucket::getHeadId()
+    {
+        return mMyCircuits[0]->mId;
+    }
 
 
     void Bucket::getGarbledOutput(

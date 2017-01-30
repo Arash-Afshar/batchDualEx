@@ -94,6 +94,8 @@ namespace osuCrypto
 			std::vector<block>& wireBuff,
 			Role role);
 		void Clear();
+                
+                Identity getHeadId();
 
         // returns the bucket-wide (head) garbled output of 
         // the evaluated garbled circuits

@@ -69,10 +69,10 @@ namespace osuCrypto {
 		std::promise<void> mOTInitDoneProm;
 		std::future<void> mOTInitDoneFutr;
                 void setIdentity(Identity id);
+                Identity mId;
 
 
 	private:
-                Identity mId;
 		void commitToInputs(
 			const Circuit& cir,
 			const KProbeMatrix& myKProbe, 

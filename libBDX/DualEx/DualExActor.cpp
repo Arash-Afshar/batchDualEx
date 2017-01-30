@@ -803,7 +803,13 @@ namespace osuCrypto
 	}
 
 
-	BitVector DualExActor::execute(u64 evalIdx, PRNG& prng, const BitVector & input, Timer& timer, std::vector<std::vector<block>> &garbledOutputs)
+        Identity
+        DualExActor::getBucketHeadId(int bucketIdx)
+        {
+            return mBuckets[bucketIdx].getHeadId();
+        }
+        
+	BitVector DualExActor::execute(u64 evalIdx, PRNG& prng, const BitVector & input, Timer& timer, std::vector<block> &garbledOutputs)
 	{
 		//u64 evalIdx = mEvalIdx++;
 		u64 bufferOffset = evalIdx % mLabels.size();
@@ -824,7 +830,7 @@ namespace osuCrypto
 
 		// evaluate the circuits that we have received
 		bucket.evaluate(mCircuit, mTheirKProbe, mMyKProbe, prng, chl, mRole, input, mLabels[bufferOffset], timer);
-
+                
 #ifndef PARALLEL_PSI
 		PSIReceiver& psiRecv = bucket.mPsiRecv;
 		for (u64 i = 0; i < mBucketSize; ++i)
@@ -845,10 +851,10 @@ namespace osuCrypto
 		bucket.mTheirOutputLabelsProm.set_value(&mOutLabels[bufferOffset]);
                 
                 // return the garbled outputs
-                for(int circOutIndex=0; circOutIndex < mBucketSize; circOutIndex++){
-                    garbledOutputs[circOutIndex].resize(mCircuit.Outputs().size());
-                    bucket.getGarbledOutput(circOutIndex, garbledOutputs[circOutIndex]);
-                }
+                int circOutIndex=0;
+                garbledOutputs.resize(mCircuit.Outputs().size());
+                bucket.getGarbledOutput(circOutIndex, garbledOutputs);
+                
 #ifndef PARALLEL_PSI
 
 		u64 idx = (u64)-1;
