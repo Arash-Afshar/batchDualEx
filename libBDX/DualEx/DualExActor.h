@@ -53,7 +53,7 @@ namespace osuCrypto
 
 		//PRNG mPrng;
 
-		 
+        bool PRINT_SETUP_TIMES, PRINT_EVAL_TIMES;
 
 		//ByteStream mTheirCnCCommit, mMyCnCCommit, mMyCnCOpen;
 
