@@ -192,12 +192,12 @@ namespace xhCoordinator
     void
     XHCCoordinator::commitToInput(std::vector<bool> permBit, std::vector<osuCrypto::block> allInputLabels, Identity id, osuCrypto::Channel &send_channel)
     {
-        if(id.mComputationId == 1){
-            for(int i = 0; i < allInputLabels.size() / 2; i++){
-                print(std::to_string(i) + ":0:\t", (uint8_t*)&allInputLabels[2*i], 16);
-                print(std::to_string(i) + ":1:\t", (uint8_t*)&allInputLabels[2*i + 1], 16);
-            }
-        }
+//        if(id.circuitOffset == 0 && id.mComputationId == 1 && id.mRole == osuCrypto::First){
+//            for(uint64_t i = 0; i < allInputLabels.size() / 2; i++){
+//                print("inp:" + std::to_string(i) + ":0:\t", (uint8_t*)&allInputLabels[2*i], 16);
+//                print("inp:" + std::to_string(i) + ":1:\t", (uint8_t*)&allInputLabels[2*i + 1], 16);
+//            }
+//        }
         std::vector<uint8_t> inputCommitments;
         commitToIO(permBit, allInputLabels, id, send_channel, true, inputCommitments);
     }
@@ -212,6 +212,14 @@ namespace xhCoordinator
     void
     XHCCoordinator::commitToOutput(std::vector<bool> permBit, std::vector<osuCrypto::block> allOutputLabels, Identity id, osuCrypto::Channel &send_channel)
     {
+//        if(id.circuitOffset == 0 && id.mComputationId == 0 && id.mRole == osuCrypto::First){
+        if(id.mComputationId == 0 ){
+            uint64_t i = 0;
+//            for(uint64_t i = 0; i < allOutputLabels.size() / 2; i++){
+                print("out:" + std::to_string(i) + ":0:\t", (uint8_t*)&allOutputLabels[2*i], 16);
+                print("out:" + std::to_string(i) + ":1:\t", (uint8_t*)&allOutputLabels[2*i + 1], 16);
+//            }
+        }
         std::vector<uint8_t> outputCommitments;
         commitToIO(permBit, allOutputLabels, id, send_channel, false, outputCommitments);
     }
@@ -284,10 +292,12 @@ namespace xhCoordinator
             std::vector<uint8_t[CODEWORD_BYTES]> inpCommitShares(3 * inputWireIndexes.size());
             std::vector<uint8_t[CODEWORD_BYTES]> xorCommitShares(3 * inputWireIndexes.size());
             
-            for(int j = 0; j < outputWireIndexes.size(); j++){
-                for (int i = 0; i < 3; i++){
+            for(uint64_t j = 0; j < outputWireIndexes.size(); j++){
+                for (int i = 0; i < 3; i++){ // TODO: check the permutation bit to find  which positions should be XORed together
                     int exec = -1;
                     int offset = -1;
+                    
+                    
                     // TODO: for now manually send r0 \oplus r1 until Decommit is changed to open a subset of commitments
 //                    (*senders)[exec].Decommit(send_commit_shares[exec], send_channel);
 
@@ -331,7 +341,13 @@ namespace xhCoordinator
 //        print("garbOut:\t", (uint8_t*)&src, 16);
 //        print("xorCommit:\t", vec2, CSEC_BYTES);
             xorBlockWithUint8(garbledInputValue[i], garbledOutputValue[i], receivedXorCommitShares[i]);
-            print("garbIn:\t", (uint8_t*)&garbledInputValue[i], 16);
+//            if(srcId.circuitOffset == 0 && srcId.mComputationId == 0 && dstId.mRole == osuCrypto::First){
+            if(srcId.mComputationId == 0){
+                if(i == 0){
+                    print("xor:\t", (uint8_t*)&garbledInputValue[i], 16);
+                    print("out:\t", (uint8_t*)&garbledOutputValue[i], 16);
+                }
+            }
         }
         
     }

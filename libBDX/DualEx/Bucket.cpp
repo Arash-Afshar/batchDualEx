@@ -597,7 +597,7 @@ namespace osuCrypto
 
 			block theirCommonOutput = hash[bit] ^ mTranlation[b][i][bit];
 
-            mEvalOutput[b][i] = theirCommonOutput;
+            mEvalOutput[b][i] = labels[cir.Outputs()[i]];
 
 #ifdef DUALEX_DEBUG
 			if (theirCommonOutput != DEBUG_theirCommonOutput[i][bit])
