@@ -34,7 +34,7 @@ namespace batchRam
         /**
          * Initialize channel, ram, and other stuff!!
          */
-        void initialize(std::string circ_path_prefix, xhCoordinator::XHCCoordinator xhcCoordinator, int numExec, int bucketSize, int numOpened, int psiSecParam, int numConcurrentSetups, int numConcurrentEvals, int numThreadsPerEval);
+        void initialize(std::string circ_path_prefix, xhCoordinator::XHCCoordinator &xhcCoordinator, int numExec, int bucketSize, int numOpened, int psiSecParam, int numConcurrentSetups, int numConcurrentEvals, int numThreadsPerEval);
         
         void mainLoop();
         

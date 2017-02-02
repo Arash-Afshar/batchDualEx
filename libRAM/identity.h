@@ -15,7 +15,7 @@ class Identity
 public:
 //    std::string mName;
     int mComputationId;
-    int mbBucketId;
+//    int mbBucketId;
     int circuitOffset;
     osuCrypto::Role mRole;
     
@@ -23,7 +23,7 @@ public:
     :
 //    mName("NA"),
     mComputationId(-1),
-    mbBucketId(-1),
+//    mbBucketId(-1),
     circuitOffset(-1)
     {
         
@@ -33,11 +33,17 @@ public:
     :
 //    mName(name),
     mComputationId(computationId),
-    mbBucketId(-1),
+//    mbBucketId(-1),
     circuitOffset(circuitId),
     mRole(role)
     {
         
+    }
+    
+    bool
+    operator==(Identity &id)
+    {
+        return (id.mComputationId == mComputationId) && (id.circuitOffset == circuitOffset) && (id.mRole == mRole);
     }
 };
 

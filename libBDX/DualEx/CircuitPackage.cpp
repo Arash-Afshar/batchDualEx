@@ -40,7 +40,7 @@ namespace osuCrypto {
 		Role role,
 		PRNG& prng,
 		Channel& channel,
-                xhCoordinator::XHCCoordinator xhcCoordinator,
+                xhCoordinator::XHCCoordinator &xhcCoordinator,
 		u64 idx,
 		const KProbeMatrix& theirKProbe,
 		std::vector<block>& wireBuff,
@@ -190,7 +190,7 @@ namespace osuCrypto {
 		channel.asyncSend(std::move(buff));
 	}
 
-	void CircuitPackage::commitToOutputs(const Circuit& cir, Role role, Channel& channel, xhCoordinator::XHCCoordinator xhcCoordinator)
+	void CircuitPackage::commitToOutputs(const Circuit& cir, Role role, Channel& channel, xhCoordinator::XHCCoordinator &xhcCoordinator)
 	{
 		auto buff = ByteStream(sizeof(block) * 2 * cir.Outputs().size());
 		buff.setp(sizeof(block) * 2 * cir.Outputs().size());
@@ -251,7 +251,7 @@ namespace osuCrypto {
 		const Circuit& cir, 
 		const KProbeMatrix& mMyKProbe,
 		Channel& chl,
-                xhCoordinator::XHCCoordinator xhcCoordinator,
+                xhCoordinator::XHCCoordinator &xhcCoordinator,
 		u64 idx)
 	{
 		mIdx = idx;

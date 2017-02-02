@@ -27,7 +27,7 @@ namespace batchRam
         std::cout << "circuit inputs " << cir.Inputs()[0] << " " << cir.Inputs()[1] << std::endl;
     }
 
-    Batch2PC::Batch2PC(std::string circ_path, osuCrypto::Role role, xhCoordinator::XHCCoordinator xhcCoordinator, std::string name, int id, int numExec, int bucketSize, int numOpened, int psiSecParam, int numConcurrentSetups, int numConcurrentEvals, int numThreadsPerEval)
+    Batch2PC::Batch2PC(std::string circ_path, osuCrypto::Role role, xhCoordinator::XHCCoordinator &xhcCoordinator, std::string name, int id, int numExec, int bucketSize, int numOpened, int psiSecParam, int numConcurrentSetups, int numConcurrentEvals, int numThreadsPerEval)
     :
     computationId(id),
     mRole(role)
@@ -38,7 +38,7 @@ namespace batchRam
         std::cout << "     --> Net init" << std::endl;
 	ios = new osuCrypto::BtIOService(0);
         netMgr = new osuCrypto::BtEndpoint(*ios, "127.0.0.1", 1212 + id + 1, mRole, "ss");
-        actor = new osuCrypto::DualExActor(cir, mRole, numExec, bucketSize, numOpened, psiSecParam, xhcCoordinator, name, computationId, *netMgr);
+        actor = new osuCrypto::DualExActor(cir, mRole, numExec, bucketSize, numOpened, psiSecParam, xhcCoordinator, computationId, *netMgr);
 	prng = new osuCrypto::PRNG(_mm_set_epi64x(0, mRole));
 
         std::cout << "     --> 2PC offline" << std::endl;

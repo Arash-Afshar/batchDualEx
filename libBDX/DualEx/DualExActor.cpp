@@ -18,74 +18,6 @@
 namespace osuCrypto
 {
 
-//<<<<<<< HEAD
-//	void GetRandSubset(u64 subsetSize, u64 setSize, PRNG& prng, std::vector<u64>& subset, std::vector<u64>& difference)
-//	{
-//		subset.clear();
-//		difference.clear();
-//		subset.resize(subsetSize);
-//		difference.resize(setSize - subsetSize);
-//
-//		for (u64 i = 0; i < subsetSize; ++i)
-//			subset[i] = i;
-//
-//		if (subsetSize)
-//		{
-//			for (u64 i = subsetSize, j = 0; i < setSize; ++i, ++j)
-//			{
-//				difference[j] = i;
-//
-//				u64 randIdx = prng.get<u64>() % i;
-//				if (randIdx < subsetSize)
-//					std::swap(subset[randIdx], difference[j]);
-//			}
-//		}
-//		else
-//		{
-//			for (u64 i = 0; i < setSize; ++i)
-//				difference[i] = i;
-//		}
-//	}
-//
-//
-//	DualExActor::DualExActor(
-//		const Circuit& cir,
-//		const Role role,
-//		const u64 numExes,
-//		const u64 bucketSize,
-//		const u64 numOpened,
-//		const u64 psiSecParam,
-//                xhCoordinator::XHCCoordinator XHCCoordinator,
-//                std::string name,
-//                int computationId,
-//		Endpoint & netMgr)
-//		:
-//                xhcCoordinator(XHCCoordinator),
-//		mCircuit(cir),
-//		mRole(role),
-//		mNetMgr(netMgr),
-//		mNumExe(numExes),
-//		mBucketSize(bucketSize),
-//		mNumOpened(numOpened),
-//		mNumCircuits(numOpened + bucketSize * numExes),
-//		mPsiSecParam(psiSecParam),
-//		//mEvalIdx(0),
-//		mCnCCommitRecvDone(false),
-//		mBuckets(numExes),
-//		mOnlineFuture(mOnlineProm.get_future()),
-//                mComputationId(computationId)
-//	{
-//		if (cir.Inputs()[0] == 0 || cir.Inputs()[1] == 0)
-//			throw std::runtime_error("There are better protocols for such things...");
-//	}
-//
-//
-//	void DualExActor::getRecvOTs(block prngSeed, u64 numInit, u64 numOTExtPer)
-//	{
-//		
-//		PRNG prng(prngSeed);
-//		auto& chl = mNetMgr.addChannel("OTRecv", "OTSend");
-//=======
     void GetRandSubset(u64 subsetSize, u64 setSize, PRNG& prng, std::vector<u64>& subset, std::vector<u64>& difference)
     {
         subset.clear();
@@ -122,12 +54,10 @@ namespace osuCrypto
         const u64 bucketSize,
         const u64 numOpened,
         const u64 psiSecParam,
-        xhCoordinator::XHCCoordinator XHCCoordinator,
-        std::string name,
+        xhCoordinator::XHCCoordinator &XHCCoordinator,
         int computationId,
         Endpoint & netMgr)
         :
-        xhcCoordinator(XHCCoordinator),
         mCircuit(cir),
         mRole(role),
         mNetMgr(netMgr),
@@ -141,8 +71,10 @@ namespace osuCrypto
         PRINT_EVAL_TIMES(0),
         mCnCCommitRecvDone(false),
         mBuckets(numExes),
-        mOnlineFuture(mOnlineProm.get_future())
+        mOnlineFuture(mOnlineProm.get_future()),
+        mComputationId(computationId)
     {
+        xhcCoordinator = &XHCCoordinator;
         if (cir.Inputs()[0] == 0 || cir.Inputs()[1] == 0)
             throw std::runtime_error("There are better protocols for such things...");
     }
@@ -153,7 +85,6 @@ namespace osuCrypto
 
         PRNG prng(prngSeed);
         auto& chl = mNetMgr.addChannel("OTRecv", "OTSend");
-//>>>>>>> bca8d333df562b973888d4ee16955b0e3981c456
         NaorPinkas baseOTs;// (chl, OTRole::Sender);
 
         std::array<std::array < block, 2>, gOtExtBaseOtCount> baseOTsSender_inputs;
@@ -608,7 +539,7 @@ namespace osuCrypto
         {
             Identity id(mComputationId, i, mRole);
             mTheirCircuits[i].setIdentity(id);
-            mTheirCircuits[i].init(mCircuit, mMyKProbe, chl, xhcCoordinator, i);
+            mTheirCircuits[i].init(mCircuit, mMyKProbe, chl, *xhcCoordinator, i);
         }
 
 
@@ -786,7 +717,7 @@ namespace osuCrypto
 #ifdef ADAPTIVE_SECURE
             Identity id(mComputationId, i, mRole);
             mMyCircuits[i].setIdentity(id);
-            mMyCircuits[i].init(mCircuit, mRole, prng, chl, xhcCoordinator, i, mTheirKProbe, wireBuff, mIndexArray, adaptiveSecureTableMasks);
+            mMyCircuits[i].init(mCircuit, mRole, prng, chl, *xhcCoordinator, i, mTheirKProbe, wireBuff, mIndexArray, adaptiveSecureTableMasks);
 #else
             mMyCircuits[i].init(mCircuit, mRole, prng, chl, i, wireBuff);
 #endif
@@ -1032,7 +963,7 @@ namespace osuCrypto
 
             auto& bucket = mBuckets[bucketIdx];
             const BitVector& input = *bucket.mInputFuture.get();
-            bucket.sendCircuitInputs(mCircuit, input, mRole, chl, xhcCoordinator, circuitOffset, circuitStep);
+            bucket.sendCircuitInputs(mCircuit, input, mRole, chl, *xhcCoordinator, circuitOffset, circuitStep);
 
 #ifdef PARALLEL_PSI
             psiPermuteIdx = circuitOffset;
@@ -1094,7 +1025,7 @@ namespace osuCrypto
                 mMyKProbe,
                 mLabels[bucketOffset][circuitIdx],
                 chl,
-                xhcCoordinator,
+                *xhcCoordinator,
 #ifdef ADAPTIVE_SECURE
                 adaptiveSecureTableMasks,
                 mIndexArray,

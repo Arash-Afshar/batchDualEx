@@ -1,4 +1,5 @@
 #include "XorHomomorphicCoordinator.h"
+#include "Circuit/Wire.h"
 
 namespace xhCoordinator
 {
@@ -32,6 +33,35 @@ namespace xhCoordinator
         outputStartOffset[2] = -1000000;
         outputStartOffset[3] = -1000000;
         
+        
+        actualOutputCommitments.resize(4);
+        actualInputCommitments.resize(4);
+        int totalCircuitCount = 8; // TODO
+        actualOutputCommitments[0].resize(totalCircuitCount); // total circuit count
+        actualOutputCommitments[1].resize(8); // total circuit count
+        actualOutputCommitments[2].resize(8); // total circuit count
+        actualOutputCommitments[3].resize(8); // total circuit count
+        for(int j = 0; j < totalCircuitCount; j++)
+        {
+            actualOutputCommitments[0][j].resize(128); // outputsize
+            actualOutputCommitments[1][j].resize(128); // outputsize
+            actualOutputCommitments[2][j].resize(0); // outputsize
+            actualOutputCommitments[3][j].resize(0); // outputsize
+        }
+        
+        actualInputCommitments[0].resize(8); // total circuit count
+        actualInputCommitments[1].resize(8); // total circuit count
+        actualInputCommitments[2].resize(8); // total circuit count
+        actualInputCommitments[3].resize(8); // total circuit count
+        for(int j = 0; j < totalCircuitCount; j++)
+        {
+            actualInputCommitments[0][j].resize(128); // outputsize
+            actualInputCommitments[1][j].resize(128); // outputsize
+            actualInputCommitments[2][j].resize(0); // outputsize
+            actualInputCommitments[3][j].resize(0); // outputsize
+        }
+        
+
         
         num_commits = startInRandCommit[2]; // TODO changed it to match 3 + whatever 3 has
         std::string ip_address = "localhost"; // TODO: should be input parameter and the same as the one passed as program's input argument
@@ -192,49 +222,72 @@ namespace xhCoordinator
     void
     XHCCoordinator::commitToInput(std::vector<bool> permBit, std::vector<osuCrypto::block> allInputLabels, Identity id, osuCrypto::Channel &send_channel)
     {
-//        if(id.circuitOffset == 0 && id.mComputationId == 1 && id.mRole == osuCrypto::First){
+//        if(id == *(new Identity(1, 0, osuCrypto::First))){
+////            uint64_t i = 0;
 //            for(uint64_t i = 0; i < allInputLabels.size() / 2; i++){
 //                print("inp:" + std::to_string(i) + ":0:\t", (uint8_t*)&allInputLabels[2*i], 16);
-//                print("inp:" + std::to_string(i) + ":1:\t", (uint8_t*)&allInputLabels[2*i + 1], 16);
+////                print("inp:" + std::to_string(i) + ":1:\t", (uint8_t*)&allInputLabels[2*i + 1], 16);
 //            }
 //        }
-        std::vector<uint8_t> inputCommitments;
-        commitToIO(permBit, allInputLabels, id, send_channel, true, inputCommitments);
+        
+        std::vector<uint8_t> com;
+        commitToIO(permBit, allInputLabels, id, send_channel, true, com);
     }
     
     void
     XHCCoordinator::receiveInputCommitments(Identity id, int inputSize, osuCrypto::Channel &rec_channel)
     {
-        std::vector<uint8_t> inputCommitments(inputSize * 2 * 3 * CODEWORD_BYTES);
-        rec_channel.recv(inputCommitments.data(), sizeof(uint8_t) * inputCommitments.size());
+        int length = inputSize * 3 * CODEWORD_BYTES;
+        std::vector<uint8_t> com(length);
+        rec_channel.recv(com.data(), sizeof(uint8_t) * length);
+
+//        if(id == *(new Identity(1, 0, osuCrypto::Second))){
+//            print("inpComm:\t", com.data(), CODEWORD_BYTES);
+//            print("inpComm:\t", com.data() + CODEWORD_BYTES, CODEWORD_BYTES);
+//        }
+        std::unique_lock<std::mutex> lck (mtx,std::defer_lock);
+        lck.lock();
+        actualInputCommitments[id.mComputationId][id.circuitOffset] = std::move(com);
+        lck.unlock();
+
     }
         
     void
     XHCCoordinator::commitToOutput(std::vector<bool> permBit, std::vector<osuCrypto::block> allOutputLabels, Identity id, osuCrypto::Channel &send_channel)
     {
-//        if(id.circuitOffset == 0 && id.mComputationId == 0 && id.mRole == osuCrypto::First){
-        if(id.mComputationId == 0 ){
-            uint64_t i = 0;
+//        if(id == *(new Identity(0, 0, osuCrypto::First))){
+////            uint64_t i = 0;
 //            for(uint64_t i = 0; i < allOutputLabels.size() / 2; i++){
-                print("out:" + std::to_string(i) + ":0:\t", (uint8_t*)&allOutputLabels[2*i], 16);
-                print("out:" + std::to_string(i) + ":1:\t", (uint8_t*)&allOutputLabels[2*i + 1], 16);
+//                print("out:" + std::to_string(i) + ":0:\t", (uint8_t*)&allOutputLabels[2*i], 16);
+////                print("out:" + std::to_string(i) + ":1:\t", (uint8_t*)&allOutputLabels[2*i + 1], 16);
 //            }
-        }
-        std::vector<uint8_t> outputCommitments;
-        commitToIO(permBit, allOutputLabels, id, send_channel, false, outputCommitments);
+//        }
+        std::vector<uint8_t> com;
+        commitToIO(permBit, allOutputLabels, id, send_channel, false, com);
+
     }
 
     void
     XHCCoordinator::receiveOutputCommitments(Identity id, int outputSize, osuCrypto::Channel &rec_channel)
     {
-        std::vector<uint8_t> outputCommitments(outputSize * 2 * 3 * CODEWORD_BYTES);
-        rec_channel.recv(outputCommitments.data(), sizeof(uint8_t) * outputCommitments.size());
+        int length = outputSize * 3 * CODEWORD_BYTES;
+        std::vector<uint8_t> com(length);
+        rec_channel.recv(com.data(), sizeof(uint8_t) * length);
+//        if(id == *(new Identity(0, 0, osuCrypto::Second))){
+//            print("outComm:\t", com.data(), CODEWORD_BYTES);
+//        }
+
+        std::unique_lock<std::mutex> lck (mtx,std::defer_lock);
+        lck.lock();
+        actualOutputCommitments[id.mComputationId][id.circuitOffset] = std::move(com);
+        lck.unlock();
+
     }
     
     void
     XHCCoordinator::commitToIO(std::vector<bool> permBit, std::vector<osuCrypto::block> allLabels, Identity id, osuCrypto::Channel &send_channel, bool isInput, std::vector<uint8_t> &actualIOCommitments)
     {
-        actualIOCommitments.resize((allLabels.size()/2) * 2 * 3 * CODEWORD_BYTES);
+        actualIOCommitments.resize((allLabels.size()/2) * 3 * CODEWORD_BYTES);
         int pos = -1;
         for(uint64_t wire = 0; wire < allLabels.size() / 2; wire++)
         {
@@ -247,53 +300,46 @@ namespace xhCoordinator
             if(permBit[wire] == true){
                 b = 1;
             }
-            uint8_t bit = b;
             // commit to 0-key
-            pos = 6 * wire * CODEWORD_BYTES;
-            xorUI8s(actualIOCommitments, pos, randCommit[0], CODEWORD_BYTES, randCommit[1], CODEWORD_BYTES);
-            pos += CODEWORD_BYTES;
-            xorUI8s(actualIOCommitments, pos, CODEWORD_BYTES, (uint8_t*) &allLabels[2 * wire + b], CSEC_BYTES);
+            pos = 3 * wire * CODEWORD_BYTES;
+            XOR_CodeWords( actualIOCommitments.data() + pos, randCommit[0], randCommit[1]);
+            XOR_128(actualIOCommitments.data() + pos, (uint8_t*) &allLabels[2 * wire + b]);
 
             // commit to 1-key
             pos += CODEWORD_BYTES;
-            xorUI8s(actualIOCommitments, pos, randCommit[2], CODEWORD_BYTES, randCommit[3], CODEWORD_BYTES);
-            pos += CODEWORD_BYTES;
-            xorUI8s(actualIOCommitments, pos, CODEWORD_BYTES, (uint8_t*) &allLabels[2 * wire + 1 - b], CSEC_BYTES);
+            XOR_CodeWords(actualIOCommitments.data() + pos, randCommit[2], randCommit[3]);
+            XOR_128(actualIOCommitments.data() + pos, (uint8_t*) &allLabels[2 * wire + 1 - b]);            
             
             // commit to perm bit
+            uint8_t bit = b;
             pos += CODEWORD_BYTES;
-            xorUI8s(actualIOCommitments, pos, randCommit[4], CODEWORD_BYTES, randCommit[5], CODEWORD_BYTES);
-            pos += CODEWORD_BYTES;
-            xorUI8s(actualIOCommitments, pos, CODEWORD_BYTES, &bit, 1);
+            XOR_CodeWords(actualIOCommitments.data() + pos, randCommit[4], randCommit[5]);
+            XOR_UINT8_T(actualIOCommitments.data() + pos, &bit, 1);
         }
 
-        send_channel.asyncSend(actualIOCommitments.data(), sizeof(uint8_t) * actualIOCommitments.size());
+        send_channel.send(actualIOCommitments.data(), sizeof(uint8_t) * actualIOCommitments.size());
     }
     
     
     void
-    XHCCoordinator::translateBucketHeads(Identity srcId, std::vector<int> outputWireIndexes, std::vector<osuCrypto::block> garbledOutputValue, Identity dstId, std::vector<int> inputWireIndexes, std::vector<osuCrypto::block> &garbledInputValue)
+    XHCCoordinator::translateBucketHeads(Identity srcId, std::vector<int> outputWireIndexes, std::vector<osuCrypto::block> garbledOutputValue, Identity dstId, std::vector<int> inputWireIndexes, std::vector<osuCrypto::block> &garbledInputValue, uint64_t evalId)
     {
-        // send thread
-        // find the commitments on output, xor them with commitments on input, and send them
-        
-//        *senders[e].Decommit(send_commit_shares[e], *send_channel);
-        
-        // receive thread
+//        std::cout << "+++++++++++++++++++++++++++++++++++++++++ " << srcId.mRole << std::endl;
+        std::string eId = std::to_string(evalId);
         assert(outputWireIndexes.size() == inputWireIndexes.size());
-
+//
         std::vector<uint8_t[CODEWORD_BYTES]> receivedXorCommitShares(3 * inputWireIndexes.size());
         std::vector<std::future<void>> futures(2);
 
         futures[0] = thread_pool->push([&](int id) {
-            osuCrypto::Channel& send_channel = end_point->addChannel(chlIdStr("decommit_channel", mRole, true, true), chlIdStr("decommit_channel", mRole, true, false));
+            osuCrypto::Channel& send_channel = end_point->addChannel(chlIdStr("decommit_channel"+eId, mRole, true, true), chlIdStr("decommit_channel"+eId, mRole, true, false));            
 
             std::vector<uint8_t[CODEWORD_BYTES]> outCommitShares(3 * outputWireIndexes.size());
             std::vector<uint8_t[CODEWORD_BYTES]> inpCommitShares(3 * inputWireIndexes.size());
             std::vector<uint8_t[CODEWORD_BYTES]> xorCommitShares(3 * inputWireIndexes.size());
             
             for(uint64_t j = 0; j < outputWireIndexes.size(); j++){
-                for (int i = 0; i < 3; i++){ // TODO: check the permutation bit to find  which positions should be XORed together
+                for (int i = 0; i < 3; i++){
                     int exec = -1;
                     int offset = -1;
                     
@@ -305,7 +351,7 @@ namespace xhCoordinator
         //            ... = send_commit_shares[exec][0][offset];
         //            ... = send_commit_shares[exec][1][offset];
                     // TODO, for the testing purposes, we use a fixed random commitment here
-                    XOR_CheckBits(outCommitShares[j * 3 + i], send_commit_shares[0][0][0], send_commit_shares[0][1][0]);
+                    XOR_CodeWords(outCommitShares[j * 3 + i], send_commit_shares[0][0][0], send_commit_shares[0][1][0]);
 
                     getPosInCommitShares(dstId, i, inputWireIndexes[j], true, exec, offset);
         //            ... = send_commit_shares[exec][0][offset];
@@ -313,10 +359,11 @@ namespace xhCoordinator
                     // TODO, for the testing purposes, we use a fixed random commitment here
 //                    input[0] = send_commit_shares[0][0][0];
 //                    input[1] = send_commit_shares[0][1][0];
-                    XOR_CheckBits(inpCommitShares[j * 3 + i], send_commit_shares[0][0][0], send_commit_shares[0][1][0]);
+                    XOR_CodeWords(inpCommitShares[j * 3 + i], send_commit_shares[0][0][0], send_commit_shares[0][1][0]);
                     
                     
-                    XOR_CheckBits(xorCommitShares[j * 3 + i], inpCommitShares[j * 3 + i], outCommitShares[j * 3 + i]);
+                    // TODO: check the permutation bit to find  which positions should be XORed together
+                    XOR_CodeWords(xorCommitShares[j * 3 + i], inpCommitShares[j * 3 + i], outCommitShares[j * 3 + i]);
 
                 }
             }
@@ -326,28 +373,38 @@ namespace xhCoordinator
         });
 
         futures[1] = thread_pool->push([&](int id) {
-            osuCrypto::Channel& rec_channel = end_point->addChannel(chlIdStr("decommit_channel", mRole, false, true), chlIdStr("decommit_channel", mRole, false, false));
+            osuCrypto::Channel& rec_channel = end_point->addChannel(chlIdStr("decommit_channel"+eId, mRole, false, true), chlIdStr("decommit_channel"+eId, mRole, false, false));
             
             rec_channel.recv(receivedXorCommitShares.data(), sizeof(uint8_t[CODEWORD_BYTES]) * receivedXorCommitShares.size());
             
-            rec_channel.close();            
+            rec_channel.close();
         });
 
-        futures[0].wait();
-        futures[1].wait();
+        futures[0].get();
+        futures[1].get();
         
         garbledInputValue.resize(garbledOutputValue.size());
         for(uint64_t i = 0; i < garbledInputValue.size(); i++){
-//        print("garbOut:\t", (uint8_t*)&src, 16);
-//        print("xorCommit:\t", vec2, CSEC_BYTES);
+            // open the commitment on permutation bits
+            int baseOutputOffset = outputWireIndexes[i] * 3 * CODEWORD_BYTES;
+            int baseInputOffset = inputWireIndexes[i] * 3 * CODEWORD_BYTES;
+            XOR_CodeWords(receivedXorCommitShares[3 * i + 2], actualOutputCommitments[srcId.mComputationId][srcId.circuitOffset].data() + baseOutputOffset + 2 * CODEWORD_BYTES);
+            XOR_CodeWords(receivedXorCommitShares[3 * i + 2], actualInputCommitments[dstId.mComputationId][dstId.circuitOffset].data() + baseInputOffset + 2 * CODEWORD_BYTES);
+            int permDelta = (receivedXorCommitShares[3 * i + 2][0] & 1);
+            
+            
+            int outputOffset = baseOutputOffset + osuCrypto::PermuteBit(garbledOutputValue[i]) * CODEWORD_BYTES;
+            int inputOffset = baseInputOffset + (osuCrypto::PermuteBit(garbledOutputValue[i]) ^ permDelta) * CODEWORD_BYTES;
+            
+            // TODO: the use of index i below is incorrect. It works now since we have essentially made receivedXorCommitShares to be always zero
+            XOR_CodeWords(receivedXorCommitShares[i], actualOutputCommitments[srcId.mComputationId][srcId.circuitOffset].data() + outputOffset);
+            XOR_CodeWords(receivedXorCommitShares[i], actualInputCommitments[srcId.mComputationId][srcId.circuitOffset].data() + inputOffset);
             xorBlockWithUint8(garbledInputValue[i], garbledOutputValue[i], receivedXorCommitShares[i]);
-//            if(srcId.circuitOffset == 0 && srcId.mComputationId == 0 && dstId.mRole == osuCrypto::First){
-            if(srcId.mComputationId == 0){
-                if(i == 0){
-                    print("xor:\t", (uint8_t*)&garbledInputValue[i], 16);
-                    print("out:\t", (uint8_t*)&garbledOutputValue[i], 16);
-                }
-            }
+            
+//            if(srcId == *(new Identity(0, 0, osuCrypto::Second))){
+//                print("inp[" + std::to_string(i) + "]:\t", (uint8_t*)&garbledInputValue[i], 16);
+//                print("out[" + std::to_string(i) + "]:\t", (uint8_t*)&garbledOutputValue[i], 16);
+//            }
         }
         
     }
@@ -390,55 +447,55 @@ namespace xhCoordinator
         }
     }
     
-    void
-    xorUI8s(std::vector<uint8_t> &ret, int pos, uint8_t *vec1, int vec1_size, uint8_t *vec2, int vec2_size)
-    {
-        int vec_long_size = vec1_size;
-        int vec_small_size = vec2_size;
-        uint8_t *vec_long = vec1;
-        uint8_t *vec_small = vec2;
-
-        if (vec1_size < vec2_size)
-        {
-            vec_long_size = vec2_size;
-            vec_long = vec2;
-            vec_small_size = vec1_size;
-            vec_small = vec1;
-        }
-
-//        if (ret.size() != vec_long_size)
-//            ret.resize(vec_long_size);
-
-        for (int i = 0; i < vec_long_size; i++)
-        {
-    //        print(ret.data(), vec_long_size);
-            if (i < vec_small_size)
-                ret[pos + i] = vec_long[i] ^ vec_small[i];
-            else
-                ret[pos + i] = vec_long[i];
-        }
-    }
-    
-    void
-    xorUI8s(std::vector<uint8_t> &ret, int pos, int length, uint8_t *vec2, int vec2_size)
-    {
-        assert(length >= vec2_size);
-        for (int i = 0; i < length; i++)
-        {
-    //        print(ret.data(), vec_long_size);
-            if (i < vec2_size)
-                ret[pos + i] = ret[pos + i] ^ vec2[i];
-            else
-                ret[pos + i] = ret[pos + i];
-        }
-    }
+//    void
+//    xorUI8s(std::vector<uint8_t> &ret, int pos, uint8_t *vec1, int vec1_size, uint8_t *vec2, int vec2_size)
+//    {
+//        int vec_long_size = vec1_size;
+//        int vec_small_size = vec2_size;
+//        uint8_t *vec_long = vec1;
+//        uint8_t *vec_small = vec2;
+//
+//        if (vec1_size < vec2_size)
+//        {
+//            vec_long_size = vec2_size;
+//            vec_long = vec2;
+//            vec_small_size = vec1_size;
+//            vec_small = vec1;
+//        }
+//
+////        if (ret.size() != vec_long_size)
+////            ret.resize(vec_long_size);
+//
+//        for (int i = 0; i < vec_long_size; i++)
+//        {
+//    //        print(ret.data(), vec_long_size);
+//            if (i < vec_small_size)
+//                ret[pos + i] = vec_long[i] ^ vec_small[i];
+//            else
+//                ret[pos + i] = vec_long[i];
+//        }
+//    }
+//    
+//    void
+//    xorUI8s(std::vector<uint8_t> &ret, int pos, int length, uint8_t *vec2, int vec2_size)
+//    {
+//        assert(length >= vec2_size);
+//        for (int i = 0; i < length; i++)
+//        {
+//    //        print(ret.data(), vec_long_size);
+////            if (i < vec2_size)
+////                ret[pos + i] = ret[pos + i] ^ vec2[i];
+////            else
+//                ret[pos + i] = ret[pos + i];
+//        }
+//    }
     
     void
     print(std::string desc, uint8_t *vec, int vec_num_entries)
     {
         std::ostringstream convert;
         convert << desc << "\t";
-        for (int a = 0; a < vec_num_entries; a++) {
+        for (int a = vec_num_entries - 1; a >= 0 ; a--) {
             convert << std::uppercase << std::setfill('0') << std::setw(2) << std::hex << (int) vec[a];
         }
         std::string key_string = convert.str();

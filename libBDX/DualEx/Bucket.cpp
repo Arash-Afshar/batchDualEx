@@ -419,7 +419,7 @@ namespace osuCrypto
 		const KProbeMatrix& myKprobe,
 		std::vector<block>& labels,
 		Channel& chl,
-                xhCoordinator::XHCCoordinator xhcCoordinator,
+                xhCoordinator::XHCCoordinator &xhcCoordinator,
 #ifdef ADAPTIVE_SECURE
 		std::vector<block> adaptiveSecureTableMasks,
 		const std::vector<block>& indexArray,
@@ -641,7 +641,7 @@ namespace osuCrypto
 		const BitVector & input,
 		Role role,
 		Channel& chl,
-                xhCoordinator::XHCCoordinator xhcCoordinator,
+                xhCoordinator::XHCCoordinator &xhcCoordinator,
 		u64 circuitOffset,
 		u64 circuitStep)
 	{

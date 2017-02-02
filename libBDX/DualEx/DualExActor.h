@@ -38,7 +38,7 @@ namespace osuCrypto
 		std::vector<Channel*> mRecvMainChls,mRecvSubChls, mSendSubChls;// , &mPsiChl;
 		//std::vector<std::vector<Channel*>> mPSISendChls, mPSIRecvChls;
 		//std::unique_ptr<std::mutex[]> mMtxs;
-                xhCoordinator::XHCCoordinator xhcCoordinator;
+                xhCoordinator::XHCCoordinator *xhcCoordinator;
 	public:
                 int mComputationId;
                 Identity getBucketHeadId(int bucketIdx);
@@ -65,8 +65,7 @@ namespace osuCrypto
 			const u64 bucketSize,
 			const u64 numOpened,
 			const u64 psiSecParam,
-                        xhCoordinator::XHCCoordinator xhcCoordinator,
-                        std::string name,
+                        xhCoordinator::XHCCoordinator &xhcCoordinator,
                         int computationId,
 			Endpoint & netMgr);
 

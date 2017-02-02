@@ -52,7 +52,7 @@ namespace batchRam
 
 
     void
-    Coordinator::initialize(std::string circ_path_prefix, xhCoordinator::XHCCoordinator xhcCoordinator, int numExec, int bucketSize, int numOpened, int psiSecParam, int numConcurrentSetups, int numConcurrentEvals, int numThreadsPerEval)
+    Coordinator::initialize(std::string circ_path_prefix, xhCoordinator::XHCCoordinator &xhcCoordinator, int numExec, int bucketSize, int numOpened, int psiSecParam, int numConcurrentSetups, int numConcurrentEvals, int numThreadsPerEval)
     {
         
 //        lookup2PC.setXHCLib();
@@ -81,7 +81,7 @@ namespace batchRam
             std::vector<int> outputWireIndexes = lookup2PC->getRelativeOutputWireIndexes(); // Note that this is the relative address, not the actual index. Which is what we want!
             std::vector<int> inputWireIndexes = read2PC->getRelativeInputWireIndexes(); // This should be the actual index, although the actual and relative are both the same
             std::vector<osuCrypto::block> garbledInputValue;
-            xhcCoordinator.translateBucketHeads(lookupBucketHeadId, outputWireIndexes, lookupGarbledOutputs, readBucketHeadId, inputWireIndexes, garbledInputValue);
+            xhcCoordinator.translateBucketHeads(lookupBucketHeadId, outputWireIndexes, lookupGarbledOutputs, readBucketHeadId, inputWireIndexes, garbledInputValue, i);
 
             //print("out0: ", (uint8_t *)&lookupGarbledOutputs[0][0], 32);
             // get output of lookup and set input of read using dummy XHC (e.g. simple XOR)

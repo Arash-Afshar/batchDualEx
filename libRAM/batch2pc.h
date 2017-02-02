@@ -26,7 +26,7 @@ namespace batchRam
         
     public:
 
-        Batch2PC(std::string circ_path, osuCrypto::Role role, xhCoordinator::XHCCoordinator xhcCoordinator, std::string name, int id, int numExec, int bucketSize, int numOpened, int psiSecParam, int numConcurrentSetups, int numConcurrentEvals, int numThreadsPerEval);
+        Batch2PC(std::string circ_path, osuCrypto::Role role, xhCoordinator::XHCCoordinator &xhcCoordinator, std::string name, int id, int numExec, int bucketSize, int numOpened, int psiSecParam, int numConcurrentSetups, int numConcurrentEvals, int numThreadsPerEval);
         
         /**
          * Sets the which inputs are to be get directly (through OT or normal commitments) and which inputs are to be passed from previous executions (through XOR Homomorphic commitments)

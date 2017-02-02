@@ -3,6 +3,8 @@
 #define XHC_H
 
 #include <array>
+#include <mutex>
+
 #include "cryptoTools/Common/Defines.h"
 #include "componentConfig.h"
 #include "XorHomomorphicCommit.h"
@@ -17,6 +19,7 @@ namespace xhCoordinator
     {
     public:
         
+        XHCCoordinator() = delete;
         XHCCoordinator(int num_commits, osuCrypto::Role role);
         ~XHCCoordinator();
 
@@ -55,17 +58,20 @@ namespace xhCoordinator
          */
         void receiveOutputCommitments(Identity id, int outputSize, osuCrypto::Channel &rec_channel);
         
-        void translateBucketHeads(Identity srcId, std::vector<int> outputWireIndexes, std::vector<osuCrypto::block> garbledOutputValue, Identity dstId, std::vector<int> inputWireIndexes, std::vector<osuCrypto::block> &garbledInputValue);
+        void translateBucketHeads(Identity srcId, std::vector<int> outputWireIndexes, std::vector<osuCrypto::block> garbledOutputValue, Identity dstId, std::vector<int> inputWireIndexes, std::vector<osuCrypto::block> &garbledInputValue, uint64_t evalId);
         
     private:
         std::vector<SplitCommitSender> *senders;
         std::vector<SplitCommitReceiver> *receivers;
         ctpl::thread_pool *thread_pool;
+        std::mutex mtx;
         std::vector<BYTEArrayVector> rec_commit_shares;
         std::vector<std::array<BYTEArrayVector, 2> > send_commit_shares;
         osuCrypto::BtEndpoint *end_point;
         osuCrypto::BtIOService *ios;
         osuCrypto::Role mRole;
+        std::vector<std::vector<std::vector<uint8_t>>> actualOutputCommitments;
+        std::vector<std::vector<std::vector<uint8_t>>> actualInputCommitments;
 //        std::array<BYTEArrayVector, 2> random_commitments;
         // these are hard coded configs
         // TODO: should be configured in config.cpp and accessed here
@@ -102,8 +108,8 @@ namespace xhCoordinator
     }; 
     
     
-    void xorUI8s(std::vector<uint8_t> &ret, int pos, uint8_t *vec1, int vec1_size, uint8_t *vec2, int vec2_size);
-    void xorUI8s(std::vector<uint8_t> &ret, int pos, int length, uint8_t *vec2, int vec2_size);
+//    void xorUI8s(std::vector<uint8_t> &ret, int pos, uint8_t *vec1, int vec1_size, uint8_t *vec2, int vec2_size);
+//    void xorUI8s(std::vector<uint8_t> &ret, int pos, int length, uint8_t *vec2, int vec2_size);
     void xorBlockWithUint8(osuCrypto::block &dst, osuCrypto::block src, uint8_t *vec2);
     void print(std::string desc, uint8_t *vec, int vec_num_entries);
     std::string chlIdStr(std::string name, osuCrypto::Role role, bool isSender, bool isFrom);
