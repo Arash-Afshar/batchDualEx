@@ -44,7 +44,7 @@ namespace batchRam
          */
         void prepareInputs(int bucketIdx);
         
-        void evaluate(osuCrypto::u64 bucketIdx, std::vector<osuCrypto::block> &garbledOutputs);
+        void evaluate(osuCrypto::u64 bucketIdx, std::vector<osuCrypto::block> &garbledOutputs, std::vector<uint64_t> inputWireIndexes, std::vector<std::vector<osuCrypto::block>> garbledInputValue);
         
         /**
          * Parse the output wires starting from the first output wire, O, to the output wire O+length and parse the result as a single number.
@@ -106,8 +106,8 @@ namespace batchRam
         
         Identity getBucketHeadId(int bucketIdx);
         
-        std::vector<int> getRelativeOutputWireIndexes();
-        std::vector<int> getRelativeInputWireIndexes();
+        std::vector<uint64_t> getRelativeOutputWireIndexes();
+        std::vector<uint64_t> getRelativeInputWireIndexes();
         
     private:
         std::string name;
@@ -122,6 +122,7 @@ namespace batchRam
         osuCrypto::BtEndpoint *netMgr;
         osuCrypto::BitVector input;
         osuCrypto::PRNG *prng2;
+        std::string mName;
         bool evalInited = false;
 
         

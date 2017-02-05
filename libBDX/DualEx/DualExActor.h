@@ -81,7 +81,7 @@ namespace osuCrypto
 		void init(PRNG& prng, u64 numParallelInit, u64 numParallelEval, u64 numThreadsPerEval, Timer& timer);
 
 
-		BitVector execute(u64 evalIdx, PRNG& prng, const BitVector& input, Timer& timer, std::vector<block> &garbledOutputs);
+		BitVector execute(u64 evalIdx, PRNG& prng, const BitVector& input, Timer& timer, std::vector<block> &garbledOutputs, std::vector<u64> inputWireIndexes, std::vector<std::vector<block>> garbledInputValue);
 
 
 		void printTimes(std::string filename);

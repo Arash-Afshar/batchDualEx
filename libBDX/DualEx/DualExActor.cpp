@@ -817,7 +817,7 @@ namespace osuCrypto
         return mBuckets[bucketIdx].getHeadId();
     }
         
-    BitVector DualExActor::execute(u64 evalIdx, PRNG& prng, const BitVector & input, Timer& timer, std::vector<block> &garbledOutputs)
+    BitVector DualExActor::execute(u64 evalIdx, PRNG& prng, const BitVector & input, Timer& timer, std::vector<block> &garbledOutputs, std::vector<u64> inputWireIndexes, std::vector<std::vector<block>> garbledInputValue)
     {
         //u64 evalIdx = mEvalIdx++;
         u64 bufferOffset = evalIdx % mLabels.size();
@@ -829,8 +829,11 @@ namespace osuCrypto
         if (input.size() != mCircuit.Inputs()[(int)mRole]) throw std::invalid_argument("input size");
         Bucket& bucket = mBuckets[evalIdx];
 
+        bucket.setGarbledInput(inputWireIndexes, garbledInputValue);
         // pass our inputs to the thread that sends them.
         bucket.mInputPromise.set_value(&input);
+//        bucket.mGarbledInputIndexPromise.set_value(&inputWireIndexes);
+//        bucket.mGarbledInputPromise.set_value(&garbledInputValue);
 
 
         auto& chl = *mRecvMainChls[bufferOffset];
@@ -963,6 +966,8 @@ namespace osuCrypto
 
             auto& bucket = mBuckets[bucketIdx];
             const BitVector& input = *bucket.mInputFuture.get();
+//            std::vector<u64>& garbledInputIndex = *bucket.mGarbledInputIndexFuture.get();
+//            std::vector<std::vector<block>>& garbledInput = *bucket.mGarbledInputFuture.get();
             bucket.sendCircuitInputs(mCircuit, input, mRole, chl, *xhcCoordinator, circuitOffset, circuitStep);
 
 #ifdef PARALLEL_PSI

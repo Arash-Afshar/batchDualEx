@@ -58,7 +58,7 @@ namespace xhCoordinator
          */
         void receiveOutputCommitments(Identity id, int outputSize, osuCrypto::Channel &rec_channel);
         
-        void translateBucketHeads(Identity srcId, std::vector<int> outputWireIndexes, std::vector<osuCrypto::block> garbledOutputValue, Identity dstId, std::vector<int> inputWireIndexes, std::vector<osuCrypto::block> &garbledInputValue, uint64_t evalId);
+        void translateBucketHeads(Identity srcId, std::vector<uint64_t> outputWireIndexes, std::vector<osuCrypto::block> garbledOutputValue, Identity dstId, std::vector<uint64_t> inputWireIndexes, std::vector<std::vector<osuCrypto::block>> &garbledInputValue, uint64_t evalId);
         
     private:
         std::vector<SplitCommitSender> *senders;

@@ -30,18 +30,19 @@ namespace batchRam
     Batch2PC::Batch2PC(std::string circ_path, osuCrypto::Role role, xhCoordinator::XHCCoordinator &xhcCoordinator, std::string name, int id, int numExec, int bucketSize, int numOpened, int psiSecParam, int numConcurrentSetups, int numConcurrentEvals, int numThreadsPerEval)
     :
     computationId(id),
-    mRole(role)
+    mRole(role),
+    mName(name)
     {
         read_circuit(cir, circ_path);
         
         
-        std::cout << "     --> Net init" << std::endl;
+//        std::cout << "     --> Net init" << std::endl;
 	ios = new osuCrypto::BtIOService(0);
         netMgr = new osuCrypto::BtEndpoint(*ios, "127.0.0.1", 1212 + id + 1, mRole, "ss");
         actor = new osuCrypto::DualExActor(cir, mRole, numExec, bucketSize, numOpened, psiSecParam, xhcCoordinator, computationId, *netMgr);
 	prng = new osuCrypto::PRNG(_mm_set_epi64x(0, mRole));
 
-        std::cout << "     --> 2PC offline" << std::endl;
+//        std::cout << "     --> 2PC offline" << std::endl;
 	actor->init(*prng, numConcurrentSetups, numConcurrentEvals, numThreadsPerEval, timer);
     }
     
@@ -60,7 +61,7 @@ namespace batchRam
     void
     Batch2PC::initEvaluate()
     {
-        std::cout << "     --> 2PC online" << std::endl;
+//        std::cout << "     --> 2PC online" << std::endl;
 	// do one without the timing to sync the two parties...
 	input = osuCrypto::BitVector(cir.Inputs()[mRole]);
 
@@ -69,15 +70,15 @@ namespace batchRam
 	//actor.execute(0, input, timer);
 	//--numExec;        
         
-        std::cout << "     -->  exec" << std::endl;
+//        std::cout << "     -->  exec" << std::endl;
         osuCrypto::block seed = prng->get<osuCrypto::block>();
         prng2 = new osuCrypto::PRNG(seed);
     }
     
     void
-    Batch2PC::evaluate(osuCrypto::u64 bucketIdx, std::vector<osuCrypto::block> &garbledOutputs)
+    Batch2PC::evaluate(osuCrypto::u64 bucketIdx, std::vector<osuCrypto::block> &garbledOutputs, std::vector<uint64_t> inputWireIndexes, std::vector<std::vector<osuCrypto::block>> garbledInputValue)
     { 
-        actor->execute(bucketIdx, *prng2, input, timer, garbledOutputs);
+        actor->execute(bucketIdx, *prng2, input, timer, garbledOutputs, inputWireIndexes, garbledInputValue);
     }
     
     void
@@ -131,10 +132,11 @@ namespace batchRam
         return actor->getBucketHeadId(bucketIdx);
     }
     
-    std::vector<int>
+    std::vector<uint64_t>
     Batch2PC::getRelativeOutputWireIndexes()
     {
-        std::vector<int> fixme(128);
+        // TODO generalize me!
+        std::vector<uint64_t> fixme(128);
         for (int i = 0; i < fixme.size(); i++) {
             fixme[i] = i;
         }
@@ -142,12 +144,17 @@ namespace batchRam
         return fixme;
     }
     
-    std::vector<int>
+    std::vector<uint64_t>
     Batch2PC::getRelativeInputWireIndexes()
     {
-        std::vector<int> fixme(128);
-        for (int i = 0; i < fixme.size(); i++) {
-            fixme[i] = i;
+        // TODO generalize me!
+        int start = 0;
+        if(mRole == osuCrypto::First){
+            start = 128;
+        }
+        std::vector<uint64_t> fixme(128);
+        for (uint64_t i = 0; i < fixme.size(); i++) {
+            fixme[i] = start + i;
         }
         
         return fixme;

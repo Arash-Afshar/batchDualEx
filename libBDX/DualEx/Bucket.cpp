@@ -14,6 +14,8 @@ namespace osuCrypto
 	Bucket::Bucket()
 		:
 		mInputFuture(mInputPromise.get_future()),
+//		mGarbledInputIndexFuture(mGarbledInputIndexPromise.get_future()),
+//		mGarbledInputFuture(mGarbledInputPromise.get_future()),
 		mTheirInputCorrectionFuture(mTheirInputCorrectionPromise.get_future()),
 		//mPsiInputsFuture(mPsiInputsPromise.get_future()),
 		mTheirDeltasFuture(mTheirDeltasProm.get_future()),
@@ -516,7 +518,6 @@ namespace osuCrypto
 
         for (u64 i = 0; i < mCopyInLabelIdxs.size(); ++i)
         {
-
             labels[mCopyInLabelIdxs[i]] = mCopyInLabels[b][i];
         }
 
@@ -907,11 +908,17 @@ namespace osuCrypto
     }
 
     void Bucket::setGarbledInput(
-        std::vector<u64>&& wireIdxs,
-        std::vector<std::vector<block>>&& src)
+        std::vector<u64> wireIdxs,
+        std::vector<std::vector<block>> src)
     {
-        mCopyInLabelIdxs = std::move(wireIdxs);
-        mCopyInLabels = std::move(src);
+        mCopyInLabels.resize(src.size());
+        for(u64 i = 0; i < wireIdxs.size(); i++) {
+            mCopyInLabelIdxs.push_back(wireIdxs[i]);
+        }
+        for(u64 j = 0; j < src.size(); j++){
+            mCopyInLabels[j] = src[j];
+        }
+//        std::cout << "done!" << std::endl;
     }
 
 

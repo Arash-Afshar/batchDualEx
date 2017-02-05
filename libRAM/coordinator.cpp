@@ -11,10 +11,10 @@ namespace batchRam
     role(myRole)
     {
         int num_commits = 1;
-        std::cout << "in Coord, going to configure" << std::endl;
+//        std::cout << "in Coord, going to configure" << std::endl;
         ramConfig::configure(memoryLength, memoryCellLength, instructionLength);
         xhcCoordinator = new xhCoordinator::XHCCoordinator(num_commits, role);
-        std::cout << "going to init" << std::endl;
+//        std::cout << "going to init" << std::endl;
         initialize(circ_path_prefix, *xhcCoordinator, numExec, bucketSize, numOpened, psiSecParam, numConcurrentSetups, numConcurrentEvals, numThreadsPerEval);
 //        std::cout << "going to run main loop" << std::endl;
 //        mainLoop();
@@ -58,7 +58,7 @@ namespace batchRam
 //        lookup2PC.setXHCLib();
         // TODO: perform two lookups
         
-        std::cout << "going to create and run lookup & read" << std::endl;
+//        std::cout << "going to create and run lookup & read" << std::endl;
         lookup2PC = new Batch2PC(circ_path_prefix + "lookup.circ", role, xhcCoordinator, "lookup", 0, numExec, bucketSize, numOpened, psiSecParam, numConcurrentSetups, numConcurrentEvals, numThreadsPerEval);
         read2PC = new Batch2PC(circ_path_prefix + "lookup.circ", role, xhcCoordinator, "read", 1, numExec, bucketSize, numOpened, psiSecParam, numConcurrentSetups, numConcurrentEvals, numThreadsPerEval);
 
@@ -72,20 +72,20 @@ namespace batchRam
         
         for (osuCrypto::u64 i = 0; i < static_cast<osuCrypto::u64>(numExec); i += numConcurrentEvals)
         {
-            lookup2PC->evaluate(i, lookupGarbledOutputs);
+            lookup2PC->evaluate(i, lookupGarbledOutputs, *(new std::vector<uint64_t>(0)), *(new std::vector<std::vector<osuCrypto::block>>(0)));
             
             
             lookupBucketHeadId = lookup2PC->getBucketHeadId(i);
             readBucketHeadId = read2PC->getBucketHeadId(i);
             
-            std::vector<int> outputWireIndexes = lookup2PC->getRelativeOutputWireIndexes(); // Note that this is the relative address, not the actual index. Which is what we want!
-            std::vector<int> inputWireIndexes = read2PC->getRelativeInputWireIndexes(); // This should be the actual index, although the actual and relative are both the same
-            std::vector<osuCrypto::block> garbledInputValue;
+            std::vector<uint64_t> outputWireIndexes = lookup2PC->getRelativeOutputWireIndexes(); // Note that this is the relative address, not the actual index. Which is what we want!
+            std::vector<uint64_t> inputWireIndexes = read2PC->getRelativeInputWireIndexes(); // This should be the actual index, although the actual and relative are both the same
+            std::vector<std::vector<osuCrypto::block>> garbledInputValue(bucketSize);
             xhcCoordinator.translateBucketHeads(lookupBucketHeadId, outputWireIndexes, lookupGarbledOutputs, readBucketHeadId, inputWireIndexes, garbledInputValue, i);
 
             //print("out0: ", (uint8_t *)&lookupGarbledOutputs[0][0], 32);
             // get output of lookup and set input of read using dummy XHC (e.g. simple XOR)
-            read2PC->evaluate(i, readGarbledOutputs);
+            read2PC->evaluate(i, readGarbledOutputs, inputWireIndexes, garbledInputValue);
         }
         
         

@@ -223,13 +223,21 @@ namespace xhCoordinator
     XHCCoordinator::commitToInput(std::vector<bool> permBit, std::vector<osuCrypto::block> allInputLabels, Identity id, osuCrypto::Channel &send_channel)
     {
 //        if(id == *(new Identity(1, 0, osuCrypto::First))){
-////            uint64_t i = 0;
+////            uint64_t i = 5;
 //            for(uint64_t i = 0; i < allInputLabels.size() / 2; i++){
-//                print("inp:" + std::to_string(i) + ":0:\t", (uint8_t*)&allInputLabels[2*i], 16);
+//                print("r0:inp:" + std::to_string(i) + ":0:\t", (uint8_t*)&allInputLabels[2*i], 16);
 ////                print("inp:" + std::to_string(i) + ":1:\t", (uint8_t*)&allInputLabels[2*i + 1], 16);
 //            }
 //        }
-        
+
+//        if(id == *(new Identity(1, 0, osuCrypto::Second))){
+//            uint64_t i = 5;
+////            for(uint64_t i = 0; i < allInputLabels.size() / 2; i++){
+//                print("r1:inp:" + std::to_string(i) + ":0:\t", (uint8_t*)&allInputLabels[2*i], 16);
+////                print("inp:" + std::to_string(i) + ":1:\t", (uint8_t*)&allInputLabels[2*i + 1], 16);
+////            }
+//        }
+                
         std::vector<uint8_t> com;
         commitToIO(permBit, allInputLabels, id, send_channel, true, com);
     }
@@ -258,9 +266,16 @@ namespace xhCoordinator
 //        if(id == *(new Identity(0, 0, osuCrypto::First))){
 ////            uint64_t i = 0;
 //            for(uint64_t i = 0; i < allOutputLabels.size() / 2; i++){
-//                print("out:" + std::to_string(i) + ":0:\t", (uint8_t*)&allOutputLabels[2*i], 16);
+//                print("r0:out:" + std::to_string(i) + ":0:\t", (uint8_t*)&allOutputLabels[2*i], 16);
 ////                print("out:" + std::to_string(i) + ":1:\t", (uint8_t*)&allOutputLabels[2*i + 1], 16);
 //            }
+//        }
+//        if(id == *(new Identity(0, 0, osuCrypto::Second))){
+//            uint64_t i = 5;
+////            for(uint64_t i = 0; i < allOutputLabels.size() / 2; i++){
+//                print("r1:out:" + std::to_string(i) + ":0:\t", (uint8_t*)&allOutputLabels[2*i], 16);
+////                print("out:" + std::to_string(i) + ":1:\t", (uint8_t*)&allOutputLabels[2*i + 1], 16);
+////            }
 //        }
         std::vector<uint8_t> com;
         commitToIO(permBit, allOutputLabels, id, send_channel, false, com);
@@ -322,49 +337,53 @@ namespace xhCoordinator
     
     
     void
-    XHCCoordinator::translateBucketHeads(Identity srcId, std::vector<int> outputWireIndexes, std::vector<osuCrypto::block> garbledOutputValue, Identity dstId, std::vector<int> inputWireIndexes, std::vector<osuCrypto::block> &garbledInputValue, uint64_t evalId)
+    XHCCoordinator::translateBucketHeads(Identity srcId, std::vector<uint64_t> outputWireIndexes, std::vector<osuCrypto::block> garbledOutputValue, Identity dstId, std::vector<uint64_t> inputWireIndexes, std::vector<std::vector<osuCrypto::block>> &garbledInputValue, uint64_t evalId)
     {
-//        std::cout << "+++++++++++++++++++++++++++++++++++++++++ " << srcId.mRole << std::endl;
         std::string eId = std::to_string(evalId);
         assert(outputWireIndexes.size() == inputWireIndexes.size());
-//
-        std::vector<uint8_t[CODEWORD_BYTES]> receivedXorCommitShares(3 * inputWireIndexes.size());
+        
+        uint64_t bucketSize = garbledInputValue.size();
+        int commitPerBucket = 3 * outputWireIndexes.size();
+        std::vector<uint8_t[CODEWORD_BYTES]> receivedXorCommitShares(3 * inputWireIndexes.size() * bucketSize);
         std::vector<std::future<void>> futures(2);
 
         futures[0] = thread_pool->push([&](int id) {
             osuCrypto::Channel& send_channel = end_point->addChannel(chlIdStr("decommit_channel"+eId, mRole, true, true), chlIdStr("decommit_channel"+eId, mRole, true, false));            
 
-            std::vector<uint8_t[CODEWORD_BYTES]> outCommitShares(3 * outputWireIndexes.size());
-            std::vector<uint8_t[CODEWORD_BYTES]> inpCommitShares(3 * inputWireIndexes.size());
-            std::vector<uint8_t[CODEWORD_BYTES]> xorCommitShares(3 * inputWireIndexes.size());
+            std::vector<uint8_t[CODEWORD_BYTES]> outCommitShares(3 * outputWireIndexes.size() * bucketSize);
+            std::vector<uint8_t[CODEWORD_BYTES]> inpCommitShares(3 * inputWireIndexes.size() * bucketSize);
+            std::vector<uint8_t[CODEWORD_BYTES]> xorCommitShares(3 * inputWireIndexes.size() * bucketSize);
             
-            for(uint64_t j = 0; j < outputWireIndexes.size(); j++){
-                for (int i = 0; i < 3; i++){
-                    int exec = -1;
-                    int offset = -1;
-                    
-                    
-                    // TODO: for now manually send r0 \oplus r1 until Decommit is changed to open a subset of commitments
-//                    (*senders)[exec].Decommit(send_commit_shares[exec], send_channel);
+            for(int bs = 0; bs < bucketSize; bs++){
+                Identity newSrcId(srcId.mComputationId, srcId.circuitOffset + bs, srcId.mRole);
+                Identity newDstId(dstId.mComputationId, dstId.circuitOffset + bs, dstId.mRole);
+                for(uint64_t j = 0; j < outputWireIndexes.size(); j++){
+                    for (int i = 0; i < 3; i++){
+                        int exec = -1;
+                        int offset = -1;
 
-                    getPosInCommitShares(srcId, i, outputWireIndexes[j], false, exec, offset);
-        //            ... = send_commit_shares[exec][0][offset];
-        //            ... = send_commit_shares[exec][1][offset];
-                    // TODO, for the testing purposes, we use a fixed random commitment here
-                    XOR_CodeWords(outCommitShares[j * 3 + i], send_commit_shares[0][0][0], send_commit_shares[0][1][0]);
 
-                    getPosInCommitShares(dstId, i, inputWireIndexes[j], true, exec, offset);
-        //            ... = send_commit_shares[exec][0][offset];
-        //            ... = send_commit_shares[exec][1][offset];
-                    // TODO, for the testing purposes, we use a fixed random commitment here
-//                    input[0] = send_commit_shares[0][0][0];
-//                    input[1] = send_commit_shares[0][1][0];
-                    XOR_CodeWords(inpCommitShares[j * 3 + i], send_commit_shares[0][0][0], send_commit_shares[0][1][0]);
-                    
-                    
-                    // TODO: check the permutation bit to find  which positions should be XORed together
-                    XOR_CodeWords(xorCommitShares[j * 3 + i], inpCommitShares[j * 3 + i], outCommitShares[j * 3 + i]);
+                        // TODO: for now manually send r0 \oplus r1 until Decommit is changed to open a subset of commitments
+    //                    (*senders)[exec].Decommit(send_commit_shares[exec], send_channel);
+                        getPosInCommitShares(newSrcId, i, outputWireIndexes[j], false, exec, offset);
+            //            ... = send_commit_shares[exec][0][offset];
+            //            ... = send_commit_shares[exec][1][offset];
+                        // TODO, for the testing purposes, we use a fixed random commitment here
+                        XOR_CodeWords(outCommitShares[bs * commitPerBucket + j * 3 + i], send_commit_shares[0][0][0], send_commit_shares[0][1][0]);
 
+                        getPosInCommitShares(newDstId, i, inputWireIndexes[j], true, exec, offset);
+            //            ... = send_commit_shares[exec][0][offset];
+            //            ... = send_commit_shares[exec][1][offset];
+                        // TODO, for the testing purposes, we use a fixed random commitment here
+    //                    input[0] = send_commit_shares[0][0][0];
+    //                    input[1] = send_commit_shares[0][1][0];
+                        XOR_CodeWords(inpCommitShares[bs * commitPerBucket + j * 3 + i], send_commit_shares[0][0][0], send_commit_shares[0][1][0]);
+
+
+                        // TODO: check the permutation bit to find  which positions should be XORed together
+                        XOR_CodeWords(xorCommitShares[bs * commitPerBucket + j * 3 + i], inpCommitShares[bs * commitPerBucket + j * 3 + i], outCommitShares[bs * commitPerBucket + j * 3 + i]);
+
+                    }
                 }
             }
             
@@ -383,28 +402,43 @@ namespace xhCoordinator
         futures[0].get();
         futures[1].get();
         
-        garbledInputValue.resize(garbledOutputValue.size());
-        for(uint64_t i = 0; i < garbledInputValue.size(); i++){
-            // open the commitment on permutation bits
-            int baseOutputOffset = outputWireIndexes[i] * 3 * CODEWORD_BYTES;
-            int baseInputOffset = inputWireIndexes[i] * 3 * CODEWORD_BYTES;
-            XOR_CodeWords(receivedXorCommitShares[3 * i + 2], actualOutputCommitments[srcId.mComputationId][srcId.circuitOffset].data() + baseOutputOffset + 2 * CODEWORD_BYTES);
-            XOR_CodeWords(receivedXorCommitShares[3 * i + 2], actualInputCommitments[dstId.mComputationId][dstId.circuitOffset].data() + baseInputOffset + 2 * CODEWORD_BYTES);
-            int permDelta = (receivedXorCommitShares[3 * i + 2][0] & 1);
+        for(uint64_t circuitOffsetInBucket = 0; circuitOffsetInBucket < bucketSize; circuitOffsetInBucket++){
+            int offsetInXor = circuitOffsetInBucket * commitPerBucket;
             
+            garbledInputValue[circuitOffsetInBucket].resize(garbledOutputValue.size());
             
-            int outputOffset = baseOutputOffset + osuCrypto::PermuteBit(garbledOutputValue[i]) * CODEWORD_BYTES;
-            int inputOffset = baseInputOffset + (osuCrypto::PermuteBit(garbledOutputValue[i]) ^ permDelta) * CODEWORD_BYTES;
-            
-            // TODO: the use of index i below is incorrect. It works now since we have essentially made receivedXorCommitShares to be always zero
-            XOR_CodeWords(receivedXorCommitShares[i], actualOutputCommitments[srcId.mComputationId][srcId.circuitOffset].data() + outputOffset);
-            XOR_CodeWords(receivedXorCommitShares[i], actualInputCommitments[srcId.mComputationId][srcId.circuitOffset].data() + inputOffset);
-            xorBlockWithUint8(garbledInputValue[i], garbledOutputValue[i], receivedXorCommitShares[i]);
-            
-//            if(srcId == *(new Identity(0, 0, osuCrypto::Second))){
-//                print("inp[" + std::to_string(i) + "]:\t", (uint8_t*)&garbledInputValue[i], 16);
-//                print("out[" + std::to_string(i) + "]:\t", (uint8_t*)&garbledOutputValue[i], 16);
-//            }
+            for(uint64_t i = 0; i < garbledInputValue[circuitOffsetInBucket].size(); i++){
+                // open the commitment on permutation bits
+                int baseOutputOffset = outputWireIndexes[i] * 3 * CODEWORD_BYTES;
+                int baseInputOffset = (inputWireIndexes[i] - inputWireIndexes[0]) * 3 * CODEWORD_BYTES; // since the actualInputCommitments only stores this parties commitments
+                
+                XOR_CodeWords(receivedXorCommitShares[offsetInXor + 3 * i + 2], actualOutputCommitments[srcId.mComputationId][srcId.circuitOffset].data() + baseOutputOffset + 2 * CODEWORD_BYTES);
+                XOR_CodeWords(receivedXorCommitShares[offsetInXor + 3 * i + 2], actualInputCommitments[dstId.mComputationId][dstId.circuitOffset + circuitOffsetInBucket].data() + baseInputOffset + 2 * CODEWORD_BYTES);
+                
+                int permDelta = (receivedXorCommitShares[offsetInXor + 3 * i + 2][0] & 1);
+
+
+                int outputOffset = baseOutputOffset + osuCrypto::PermuteBit(garbledOutputValue[i]) * CODEWORD_BYTES;
+                int inputOffset = baseInputOffset + (osuCrypto::PermuteBit(garbledOutputValue[i]) ^ permDelta) * CODEWORD_BYTES;
+
+                // TODO: the use of index i below is incorrect. It works now since we have essentially made receivedXorCommitShares to be always zero
+                XOR_CodeWords(receivedXorCommitShares[offsetInXor + 3 * i + permDelta], actualOutputCommitments[srcId.mComputationId][srcId.circuitOffset].data() + outputOffset);
+                XOR_CodeWords(receivedXorCommitShares[offsetInXor + 3 * i + permDelta], actualInputCommitments[srcId.mComputationId][srcId.circuitOffset + circuitOffsetInBucket].data() + inputOffset);
+                xorBlockWithUint8(garbledInputValue[circuitOffsetInBucket][i], garbledOutputValue[i], receivedXorCommitShares[offsetInXor + 3 * i + permDelta]);
+
+//                if(dstId == *(new Identity(1, 0, osuCrypto::First)) && circuitOffsetInBucket == 0 && i == 5){
+//                    print("r0Inp:" + std::to_string(i) + ":\t", (uint8_t*)&garbledInputValue[circuitOffsetInBucket][i], 16);
+//                }
+//                if(dstId == *(new Identity(1, 0, osuCrypto::Second)) && circuitOffsetInBucket == 0){
+//                    print("r1Inp:" + std::to_string(i) + ":\t", (uint8_t*)&garbledInputValue[circuitOffsetInBucket][i], 16);
+//                }
+
+
+    //            if(srcId == *(new Identity(0, 0, osuCrypto::Second))){
+    //                print("inp[" + std::to_string(i) + "]:\t", (uint8_t*)&garbledInputValue[i], 16);
+    //                print("out[" + std::to_string(i) + "]:\t", (uint8_t*)&garbledOutputValue[i], 16);
+    //            }
+            }
         }
         
     }

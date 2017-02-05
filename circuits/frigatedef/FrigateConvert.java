@@ -44,6 +44,7 @@ public class FrigateConvert {
         }
         return result;
     }
+    String zeroOut = "";
 
     public FrigateConvert(String frigate_out_path, String file_path, String format) throws IOException {
         ArrayList<String> p1_inputs = new ArrayList<>();
@@ -84,10 +85,9 @@ public class FrigateConvert {
             }else{
                 String tokens[] = line.split(" ");
                 int gtype = Integer.parseInt(tokens[0]);
-                if(gtype == 0)
+                if(gtype == 0){
                     gtype = 6;
-                if(gtype == 15)
-                    gtype = 9;
+                }
                 Gate gate = new Gate(new String []{tokens[2], tokens[3]}, tokens[1], gtype);
                 gates.add(gate);
                 if(gate.max > max_wire)
@@ -95,6 +95,18 @@ public class FrigateConvert {
             }
 
         }
+
+        if(format.equals("nigel")){
+            gates.add(0, new Gate(new String[]{"0", "0"}, String.valueOf(max_wire + 1), "0110"));
+            zeroOut = String.valueOf(max_wire + 1);
+            max_wire++;
+            for(int i = 0; i < gates.size(); i++){
+                Gate gate = gates.get(i);
+                if ( ! (gate.type.equals("0110") || gate.type.equals("1000") || gate.type.equals("0101")))
+                    max_wire = normalizeGate(gates, gate, i, max_wire);
+            }
+        }
+
         int p1_input_count = p1_inputs.size();
         int p2_input_count = p2_inputs.size();
         int output_count = outputs.size();
@@ -136,6 +148,53 @@ public class FrigateConvert {
         out.close();
     }
 
+    int normalizeGate(ArrayList<Gate> gates, Gate gate, int pos, int max_wire){
+        if(gate.type.equals("1111")){ // ONE
+            gate.type = "0101";
+            gate.inputs[0] = zeroOut;
+            gate.inputs[1] = "0";
+        } else if(gate.type.equals("0010")){ // NOTB_AND
+            String A = gate.inputs[0];
+            String B = gate.inputs[1];
+            String out = gate.output;
+            Gate NOT_B = new Gate(new String[]{B, "0"}, String.valueOf(++max_wire), "0101");
+            gates.add(pos, NOT_B);
+
+            // make and gate
+            gate.type = "1000";
+            gate.inputs[1] = String.valueOf(max_wire);
+        } else if(gate.type.equals("0001")){ // NOR
+            String A = gate.inputs[0];
+            String B = gate.inputs[1];
+            String out = gate.output;
+            Gate NOT_B = new Gate(new String[]{B, "0"}, String.valueOf(++max_wire), "0101");
+            gates.add(pos, NOT_B);
+
+            // make XOR gate
+            gate.type = "0110";
+            gate.inputs[1] = String.valueOf(max_wire);
+        } else if(gate.type.equals("0100")){ // NOTA_AND
+            String A = gate.inputs[0];
+            String B = gate.inputs[1];
+            String out = gate.output;
+            Gate NOT_A = new Gate(new String[]{A, "0"}, String.valueOf(++max_wire), "0101");
+            gates.add(pos, NOT_A);
+
+            // make and gate
+            gate.type = "1000";
+            gate.inputs[0] = String.valueOf(max_wire);
+        } else if(gate.type.equals("1001")){ // NXOR
+            // make XOR gate
+            gate.type = "0110";
+
+            String out = gate.output;
+            Gate NXOR = new Gate(new String[]{out, "0"}, String.valueOf(++max_wire), "0101");
+            gates.add(pos + 1, NXOR);
+
+        }
+        return max_wire;
+    }
+
     class Gate{
         public String[] inputs;
         public String output;
@@ -170,9 +229,13 @@ public class FrigateConvert {
             String rep = "";
 
             String inp_out_count = String.valueOf(inputs.length) + " 1 ";
-            rep = inp_out_count;
-            for (String inp : inputs){
-                rep += inp + " ";
+            if(format.equals("nigel") && type.equals("0101")){
+                rep = "1 1 " + inputs[0] + " ";
+            } else{
+                rep = inp_out_count;
+                for (String inp : inputs){
+                    rep += inp + " ";
+                }
             }
 
             rep += output + " ";
@@ -192,6 +255,7 @@ public class FrigateConvert {
                     type_name = "NOTA_AND";
                 } else if(type.equals("0101")){
                     type_name = "NOTA";
+                    type_name = "INV";   // This is not a mistake!!
                 } else if(type.equals("0110")){
                     type_name = "XOR";
                 } else if(type.equals("0111")){

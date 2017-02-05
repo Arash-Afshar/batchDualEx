@@ -130,12 +130,10 @@ namespace osuCrypto
         // sets the garbled inputs on the circuitIdx'th evaluation circuit.
         //     e.g. evalCircuit[circuitIdx].inputLabels[wireIdx[i]] = src[i]; for all i.
         // @ wireIdxs [in]: The indexes of the input labels that should be set.
-        //     Note: parameter will be moved.
         // @ src [in]: The wire labels that should be used. One set for each circuit
-        //     Note: parameter will be moved.
         void setGarbledInput(
-            std::vector<u64>&& wireIdxs,
-            std::vector<std::vector<block>>&& src);
+            std::vector<u64> wireIdxs,
+            std::vector<std::vector<block>> src);
 
 
 
@@ -146,7 +144,12 @@ namespace osuCrypto
 		std::unique_ptr<BitVector> mInputCorrectionString;
 
 		std::promise<const BitVector*> mInputPromise;
+//		std::promise<std::vector<u64>*> mGarbledInputIndexPromise;
+//		std::promise<std::vector<std::vector<block>>*> mGarbledInputPromise;
+                
 		std::shared_future<const BitVector*> mInputFuture;
+//		std::shared_future<std::vector<u64>*> mGarbledInputIndexFuture;
+//		std::shared_future<std::vector<std::vector<block>>*> mGarbledInputFuture;
 
 		//std::promise<std::vector<block>*> mPsiInputsPromise;
 		//std::future<std::vector<block>*> mPsiInputsFuture;
