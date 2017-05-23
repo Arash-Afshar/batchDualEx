@@ -97,11 +97,11 @@ namespace osuCrypto {
 
 		channel.asyncSend(std::move(buff));
                 
-                std::vector<bool> permBit(cir.Inputs()[role]);
-                std::vector<block> allInputLabels(cir.Inputs()[role] * 2);
-                u64 start[2] = { 0 , cir.Inputs()[0] };
-                block* myLabels = &mCircuit.mInputWires[start[role]];
-                for (u64 i = 0; i < cir.Inputs()[role]; ++i, ++myLabels)
+                std::vector<bool> permBit(cir.Inputs()[role] + cir.Inputs()[1 - role]);
+                std::vector<block> allInputLabels((cir.Inputs()[role] + cir.Inputs()[1 - role]) * 2);
+//                u64 start[2] = { 0 , cir.Inputs()[0] };
+                block* myLabels = &mCircuit.mInputWires[0];
+                for (u64 i = 0; i < cir.Inputs()[role] + cir.Inputs()[1 - role]; ++i, ++myLabels)
                 {
 
                         permBit[i] = PermuteBit(*myLabels);
@@ -260,7 +260,7 @@ namespace osuCrypto {
 
 		mMyKProbeInputCommit.resize(mMyKProbe.encodingSize());
 		chl.recv(mMyKProbeInputCommit.data(), mMyKProbe.encodingSize() * sizeof(Commit) * 2);
-                int inputSize = cir.Inputs()[mId.mRole];
+                int inputSize = cir.Inputs()[mId.mRole] + cir.Inputs()[1 - mId.mRole];
                 xhcCoordinator.receiveInputCommitments(mId, inputSize, chl);
                 // For RAM program integration:
                 //    1) XHCommit to all output wire

@@ -1,0 +1,49 @@
+#define N    QQQ
+#define LOGN LGQ
+#define ADDR LGQ
+#define Z    4
+#define GINPS LOGN
+#define EINPS 2 * LOGN + N * LOGN * 2
+#define OUTS 2 * LOGN + N * LOGN * 2
+
+#parties 2
+
+typedef uint_t GINPS garbinputsize
+typedef uint_t EINPS evalinputsize
+typedef uint_t OUTS outputsize
+typedef uint_t ADDR address
+typedef uint_t 1    bit
+typedef uint_t 16   uint
+
+#input 1 evalinputsize
+#input 2 garbinputsize
+#output 1 outputsize
+
+
+typedef struct_t entry{
+    address addr;
+    address leaf;
+}
+
+
+function void main()
+{
+
+    address newLeafAddr  = input2{0:ADDR} ^ input1{0:ADDR};
+    address lookingFor   = input1{ADDR : ADDR};
+    uint    offset       = 2 * ADDR;
+    uint    outputOffset = 2 * ADDR;
+
+    for(address i=0; i < N; i++){
+        output1{outputOffset:ADDR} = input1{offset:ADDR}; /*---- real address ----*/
+        if (i == lookingFor){
+            output1{outputOffset + ADDR:ADDR} = newLeafAddr; /*--- new leaf address ----*/
+            output1{0:ADDR} = newLeafAddr; /*---- also return the new leaf address ----*/
+            output1{ADDR:ADDR} = input1{offset + ADDR:ADDR}; /*------- plain current leaf adderess ---*/
+        } else{
+            output1{outputOffset + ADDR:ADDR} = input1{offset + ADDR:ADDR}; /*--- current leaf address ----*/
+        }
+        offset = offset + 2 * ADDR;
+        outputOffset = outputOffset + 2 * ADDR;
+    }
+}

@@ -9,7 +9,6 @@ namespace batchRam
     void
     Batch2PC::read_circuit(osuCrypto::Circuit &cir, std::string file)
     {
-        std::cout << "reading circuit" << std::endl;
         {
             std::fstream fStrm(file);
             if (fStrm.is_open() == false)
@@ -24,7 +23,7 @@ namespace batchRam
             cir.readBris(fStrm);
         }
 
-        std::cout << "circuit inputs " << cir.Inputs()[0] << " " << cir.Inputs()[1] << std::endl;
+//        std::cout << file << " circuit inputs " << cir.Inputs()[0] << " " << cir.Inputs()[1] << std::endl;
     }
 
     Batch2PC::Batch2PC(std::string circ_path, osuCrypto::Role role, xhCoordinator::XHCCoordinator &xhcCoordinator, std::string name, int id, int numExec, int bucketSize, int numOpened, int psiSecParam, int numConcurrentSetups, int numConcurrentEvals, int numThreadsPerEval)
@@ -34,7 +33,6 @@ namespace batchRam
     mName(name)
     {
         read_circuit(cir, circ_path);
-        
         
 //        std::cout << "     --> Net init" << std::endl;
 	ios = new osuCrypto::BtIOService(0);
@@ -132,32 +130,45 @@ namespace batchRam
         return actor->getBucketHeadId(bucketIdx);
     }
     
+//    std::vector<uint64_t>
+//    Batch2PC::getRelativeOutputWireIndexes()
+//    {
+//        // TODO generalize me!
+//        std::vector<uint64_t> fixme(1);
+//        for (int i = 0; i < fixme.size(); i++) {
+//            fixme[i] = i;
+//        }
+//        
+//        return fixme;
+//    }
+//    
+//    std::vector<uint64_t>
+//    Batch2PC::getRelativeInputWireIndexes()
+//    {
+//        // TODO generalize me!
+//        int start = 0;
+////        if(mRole == osuCrypto::First){
+////            start = 128;
+////        }
+//        std::vector<uint64_t> fixme(1);
+//        for (uint64_t i = 0; i < fixme.size(); i++) {
+//            fixme[i] = start + i;
+//        }
+//        
+//        return fixme;
+//    }
+    
     std::vector<uint64_t>
-    Batch2PC::getRelativeOutputWireIndexes()
+    Batch2PC::getInputSegmentWireIndexes(std::string segment)
     {
-        // TODO generalize me!
-        std::vector<uint64_t> fixme(128);
-        for (int i = 0; i < fixme.size(); i++) {
-            fixme[i] = i;
-        }
-        
-        return fixme;
+        return inputSegments[segment];
     }
     
     std::vector<uint64_t>
-    Batch2PC::getRelativeInputWireIndexes()
+    Batch2PC::getOutputSegmentWireIndexes(std::string segment)
     {
-        // TODO generalize me!
-        int start = 0;
-        if(mRole == osuCrypto::First){
-            start = 128;
-        }
-        std::vector<uint64_t> fixme(128);
-        for (uint64_t i = 0; i < fixme.size(); i++) {
-            fixme[i] = start + i;
-        }
-        
-        return fixme;
+        return outputSegments[segment];
     }
+
 
 }

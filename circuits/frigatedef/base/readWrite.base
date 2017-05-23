@@ -1,0 +1,76 @@
+#define N    QQQ
+#define LOGN LGQ
+#define HEIGHT HQQ
+#define ADDR LGQ
+#define WORD DDD
+#define Z    4
+#define INPS Z * (2 * LOGN + WORD + 1) * HEIGHT + ADDR + ADDR + WORD + 1
+#define OUTS Z * (2 * LOGN + WORD + 1) * HEIGHT + WORD
+
+/*-------------- LOGN and ADDR have been increased by 1 bit to define invalid values -------------*/
+/* TODO: split this into a read circuit and a write circuit */
+/*-- party 1 input: branch ---*/
+/*-- party 2 input: address_looking_for + leaf id + data_to_write + read_or_write --*/
+/*-- output: new branch + data_read --*/
+
+
+#parties 2
+
+typedef uint_t INPS inputsize
+typedef uint_t OUTS outputsize
+typedef uint_t WORD data
+typedef uint_t 1    bit
+typedef uint_t LOGN uint
+typedef uint_t 16   ulong
+
+#input 1 inputsize
+#output 1 outputsize
+
+
+
+function void main(){
+    uint addr = input1{0:ADDR};
+    uint leaf = input1{ADDR:ADDR};
+    data inpData = input1{ADDR + ADDR:WORD};
+    bit  rw   = input1{ADDR+ADDR+WORD:1};
+    /*--------------------------*/
+    ulong blockSize = 2 * LOGN + WORD + 1;
+    ulong bucketSize = blockSize * Z;
+    for(ulong i=0; i<HEIGHT; i++){
+        ulong offset    = ADDR + ADDR + WORD + 1 + i * bucketSize;
+        ulong outOffset = ADDR + i * bucketSize;
+        for(ulong j=0; j<Z; j++){
+            ulong flag=0;
+            ulong innerOffset = offset + j * blockSize;
+            ulong outInnerOffset = outOffset + j * blockSize;
+
+            output1{outInnerOffset                  : 1   } = input1{innerOffset                   :1   }; /*--dummy--*/
+            output1{outInnerOffset + 1              : ADDR} = input1{innerOffset + 1               :ADDR}; /*--addr--*/
+            output1{outInnerOffset + 1 + ADDR       : ADDR} = input1{innerOffset + 1 + ADDR        :ADDR}; /*--leaf--*/
+            output1{outInnerOffset + 1 + ADDR + ADDR: WORD} = input1{innerOffset + 1 + ADDR + ADDR :WORD}; /*--content--*/
+
+            if (input1{innerOffset:1}  == 0){ /*---- if not dummy ---*/
+                if(input1{innerOffset + 1:ADDR} == addr){
+                    output1{0:WORD} = input1{innerOffset + 1 + ADDR + ADDR:WORD}; /*--- return data ---*/
+                    output1{outInnerOffset + ADDR : 1} = 1#1; /*---- remove from current node ---*/
+                    /*------ add to stash -----*/
+                    for(ulong k=0; k < Z; k++){
+                        ulong stashOffset = ADDR + k * blockSize;
+                        if(output1{stashOffset:1} == 1){ /*---- emtpy spot in stash found ----*/
+                            output1{stashOffset                  : 1   } = 1#1;
+                            output1{stashOffset + 1              : ADDR} = addr;
+                            output1{stashOffset + 1 + ADDR       : ADDR} = leaf;
+
+                            /*General circuit is too big. different circuit are better*/
+                            /*--if(rw == 1){*/ /*---- if write, write input data -----*/
+                            /*    output1{stashOffset + 1 + ADDR + ADDR: WORD} = inpData; */
+                            /* } else{ */
+                            /*     output1{stashOffset + 1 + ADDR + ADDR: WORD} = output1{0:WORD}; */
+                            /* } */
+                        }
+                    }
+                }
+            }
+        }
+    }
+}

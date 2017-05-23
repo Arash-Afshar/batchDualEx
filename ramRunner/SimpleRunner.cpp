@@ -74,7 +74,7 @@ void setup_arg_parser(int argc, const char** argv,
 		);
 
 	opt.add(
-		"1212", // Default.
+		"5000", // Default.
 		0, // Required?
 		1, // Number of args expected.
 		0, // Delimiter if expecting multiple args.
@@ -180,7 +180,7 @@ void setup_arg_parser(int argc, const char** argv,
 		"--statisticalK");
 
 	opt.add(
-		"10",
+		"16",
 		0,
 		1,
 		0,
@@ -189,7 +189,7 @@ void setup_arg_parser(int argc, const char** argv,
 		"--memoryLength");
 
 	opt.add(
-		"32",
+		"16",
 		0,
 		1,
 		0,

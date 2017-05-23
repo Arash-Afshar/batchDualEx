@@ -40,6 +40,14 @@ public:
         
     }
     
+    std::string toString(){
+        std::string str = "(";
+        str += "computation: " + std::to_string(mComputationId) + ", ";
+        str += "circuit: " + std::to_string(circuitOffset) + ", ";
+        str += "role: " + std::to_string(mRole) + ")";
+        return str;
+    }
+    
     bool
     operator==(Identity &id)
     {

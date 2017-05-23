@@ -1,80 +1,119 @@
 #include "XorHomomorphicCoordinator.h"
-#include "Circuit/Wire.h"
+#include "constants.h"
 
 namespace xhCoordinator
 {
     
     
-    XHCCoordinator::XHCCoordinator(int num_commits, osuCrypto::Role role)
+    XHCCoordinator::XHCCoordinator(osuCrypto::Role role)
     :
     mRole(role)
     {
+    }
+    
+    XHCCoordinator::~XHCCoordinator()
+    {
+        end_point->stop();
+        ios->stop();
+    }
+    
+    void
+    XHCCoordinator::xhcOfflinePhase(int numberOfComputations, int garbledCircuitOverhead, int totalIOCount){
         int port = 28001;
         int num_execs = 4; // TODO: should be a separate parameter read from user
         
-        // TODO: input is expanded due to kprob ---> add correct input size
-        perInputSize[0] = 256 * 3;
-        perInputSize[1] = 256 * 3;
-        perInputSize[2] = -100000 * 3;
-        perInputSize[3] = -100000 * 3;
+//        perInputSize[0] = 256 * 3;
+//        perInputSize[1] = 256 * 3;
+//        perInputSize[2] = 256 * 3;
+//        perInputSize[3] = 256 * 3;
+//        perInputSize[4] = 256 * 3;
+//        perInputSize[5] = 256 * 3;
+//
+//        perCircuitSize[0] = perInputSize[0] + 128 * 3;
+//        perCircuitSize[1] = perInputSize[1] + 128 * 3;
+//        perCircuitSize[2] = perInputSize[2] + 128 * 3;
+//        perCircuitSize[3] = perInputSize[3] + 128 * 3;
+//        perCircuitSize[4] = perInputSize[4] + 128 * 3;
+//        perCircuitSize[5] = perInputSize[5] + 128 * 3;
+//
+//        startInRandCommit[0] = 0;
+//        startInRandCommit[1] = perCircuitSize[0] * 100;
+//        startInRandCommit[2] = perCircuitSize[1] * 100;
+//        startInRandCommit[3] = perCircuitSize[2] * 100;
+//        startInRandCommit[4] = perCircuitSize[3] * 100;
+//        startInRandCommit[5] = perCircuitSize[4] * 100;
+//        
+//        outputStartOffset[0] = 33744;
+//        outputStartOffset[1] = 33744;
+//        outputStartOffset[2] = 33744;
+//        outputStartOffset[3] = 33744;
+//        outputStartOffset[4] = 33744;
+//        outputStartOffset[5] = 33744;
+//        
+//        
+//        int computationSize = 6;
+//        actualOutputCommitments.resize(computationSize);
+//        actualInputCommitments.resize(computationSize);
+//        int totalCircuitCount = 8; // TODO
+//        actualOutputCommitments[0].resize(totalCircuitCount); // total circuit count
+//        actualOutputCommitments[1].resize(totalCircuitCount); // total circuit count
+//        actualOutputCommitments[2].resize(totalCircuitCount); // total circuit count
+//        actualOutputCommitments[3].resize(totalCircuitCount); // total circuit count
+//        actualOutputCommitments[4].resize(totalCircuitCount); // total circuit count
+//        actualOutputCommitments[5].resize(totalCircuitCount); // total circuit count
+//        for(int j = 0; j < totalCircuitCount; j++)
+//        {
+//            actualOutputCommitments[0][j].resize(400); // outputsize
+//            actualOutputCommitments[1][j].resize(400); // outputsize
+//            actualOutputCommitments[2][j].resize(400); // outputsize
+//            actualOutputCommitments[3][j].resize(400); // outputsize
+//            actualOutputCommitments[4][j].resize(400); // outputsize
+//            actualOutputCommitments[5][j].resize(400); // outputsize
+//        }
+//        
+//        actualInputCommitments[0].resize(totalCircuitCount); // total circuit count
+//        actualInputCommitments[1].resize(totalCircuitCount); // total circuit count
+//        actualInputCommitments[2].resize(totalCircuitCount); // total circuit count
+//        actualInputCommitments[3].resize(totalCircuitCount); // total circuit count
+//        actualInputCommitments[4].resize(totalCircuitCount); // total circuit count
+//        actualInputCommitments[5].resize(totalCircuitCount); // total circuit count
+//        for(int j = 0; j < totalCircuitCount; j++)
+//        {
+//            actualInputCommitments[0][j].resize(400); // inputsize
+//            actualInputCommitments[1][j].resize(400); // inputsize
+//            actualInputCommitments[2][j].resize(400); // inputsize
+//            actualInputCommitments[3][j].resize(400); // inputsize
+//            actualInputCommitments[4][j].resize(400); // inputsize
+//            actualInputCommitments[5][j].resize(400); // inputsize
+//        }
+//        
+//
+//        int num_commits = startInRandCommit[5] + perCircuitSize[5] * 100; // TODO changed it to match 5 + whatever 3 has
+//        int num_commits = 230400;
 
-        perCircuitSize[0] = perInputSize[0] + 128 * 3;
-        perCircuitSize[1] = perInputSize[1] + 128 * 3;
-        perCircuitSize[2] = perInputSize[2] + -100000 * 3;
-        perCircuitSize[3] = perInputSize[3] + -100000 * 3;
 
-        startInRandCommit[0] = 0;
-        startInRandCommit[1] = perCircuitSize[0] * 100;
-        startInRandCommit[2] = perCircuitSize[1] * 100;
-        startInRandCommit[3] = -1000000;
-        
-        outputStartOffset[0] = 33744;
-        outputStartOffset[1] = 33744;
-        outputStartOffset[2] = -1000000;
-        outputStartOffset[3] = -1000000;
-        
-        
-        actualOutputCommitments.resize(4);
-        actualInputCommitments.resize(4);
-        int totalCircuitCount = 8; // TODO
-        actualOutputCommitments[0].resize(totalCircuitCount); // total circuit count
-        actualOutputCommitments[1].resize(8); // total circuit count
-        actualOutputCommitments[2].resize(8); // total circuit count
-        actualOutputCommitments[3].resize(8); // total circuit count
-        for(int j = 0; j < totalCircuitCount; j++)
-        {
-            actualOutputCommitments[0][j].resize(128); // outputsize
-            actualOutputCommitments[1][j].resize(128); // outputsize
-            actualOutputCommitments[2][j].resize(0); // outputsize
-            actualOutputCommitments[3][j].resize(0); // outputsize
+
+        actualOutputCommitments.resize(numberOfComputations);
+        actualInputCommitments.resize(numberOfComputations);
+        for(int j = 0; j < numberOfComputations; j++){
+            actualOutputCommitments[j].resize(garbledCircuitOverhead);
+            actualInputCommitments[j].resize(garbledCircuitOverhead);
         }
-        
-        actualInputCommitments[0].resize(8); // total circuit count
-        actualInputCommitments[1].resize(8); // total circuit count
-        actualInputCommitments[2].resize(8); // total circuit count
-        actualInputCommitments[3].resize(8); // total circuit count
-        for(int j = 0; j < totalCircuitCount; j++)
-        {
-            actualInputCommitments[0][j].resize(128); // outputsize
-            actualInputCommitments[1][j].resize(128); // outputsize
-            actualInputCommitments[2][j].resize(0); // outputsize
-            actualInputCommitments[3][j].resize(0); // outputsize
-        }
-        
 
-        
-        num_commits = startInRandCommit[2]; // TODO changed it to match 3 + whatever 3 has
+        int num_commits = totalIOCount * 3 * garbledCircuitOverhead;
+        std::cout << "Total commitments: " << num_commits << std::endl;
+                
         std::string ip_address = "localhost"; // TODO: should be input parameter and the same as the one passed as program's input argument
 
         std::vector<std::future<void>> futures(2);
         thread_pool = new ctpl::thread_pool(std::thread::hardware_concurrency());
 
         ios = new osuCrypto::BtIOService(0);
-        end_point = new osuCrypto::BtEndpoint(*ios, ip_address, port, role, "ep");
+        end_point = new osuCrypto::BtEndpoint(*ios, ip_address, port, mRole, "ep");
         osuCrypto::PRNG rnd;
 
         futures[0] = thread_pool->push([&](int id) {
-            osuCrypto::Channel& send_channel = end_point->addChannel(chlIdStr("rand_commit_channel", role, true, true), chlIdStr("rand_commit_channel", role, true, false));
+            osuCrypto::Channel& send_channel = end_point->addChannel(chlIdStr("rand_commit_channel", mRole, true, true), chlIdStr("rand_commit_channel", mRole, true, false));
             rnd.SetSeed(load_block(constant_seeds[0].data()));
 
             SplitCommitSender base_sender;
@@ -83,13 +122,13 @@ namespace xhCoordinator
             
             senders = new std::vector<SplitCommitSender>(num_execs);
             base_sender.GetCloneSenders(num_execs, *senders);
-            sendRandomCommits(*senders, role, num_execs, num_commits);
+            sendRandomCommits(*senders, mRole, num_execs, num_commits);
             
             send_channel.close();            
         });
 
         futures[1] = thread_pool->push([&](int id) {
-            osuCrypto::Channel& rec_channel = end_point->addChannel(chlIdStr("rand_commit_channel", role, false, true), chlIdStr("rand_commit_channel", role, false, false));
+            osuCrypto::Channel& rec_channel = end_point->addChannel(chlIdStr("rand_commit_channel", mRole, false, true), chlIdStr("rand_commit_channel", mRole, false, false));
             rnd.SetSeed(load_block(constant_seeds[1].data()));
 
             SplitCommitReceiver base_receiver;
@@ -99,20 +138,13 @@ namespace xhCoordinator
             receivers = new std::vector<SplitCommitReceiver>(num_execs);
             std::vector<osuCrypto::PRNG> exec_rnds(num_execs);
             base_receiver.GetCloneReceivers(num_execs, rnd, *receivers, exec_rnds);
-            receiveRandomCommits(*receivers, exec_rnds, role, num_execs, num_commits);
+            receiveRandomCommits(*receivers, exec_rnds, mRole, num_execs, num_commits);
 
             rec_channel.close();            
         });
 
         futures[0].wait();
         futures[1].wait();
-
-    }
-    
-    XHCCoordinator::~XHCCoordinator()
-    {
-        end_point->stop();
-        ios->stop();
     }
     
     void
@@ -209,7 +241,7 @@ namespace xhCoordinator
         for (int i = 0; i < 3; i++){
             int exec = -1;
             int offset = -1;
-            getPosInCommitShares(id, i, wireIndx, isInput, exec, offset);
+//            getPosInCommitShares(id, i, wireIndx, isInput, exec, offset);
 //            output[2 * i + 0] = send_commit_shares[exec][0][offset];
 //            output[2 * i + 1] = send_commit_shares[exec][1][offset];
             // TODO, for the testing purposes, we use a fixed random commitment here
@@ -221,23 +253,8 @@ namespace xhCoordinator
     
     void
     XHCCoordinator::commitToInput(std::vector<bool> permBit, std::vector<osuCrypto::block> allInputLabels, Identity id, osuCrypto::Channel &send_channel)
-    {
-//        if(id == *(new Identity(1, 0, osuCrypto::First))){
-////            uint64_t i = 5;
-//            for(uint64_t i = 0; i < allInputLabels.size() / 2; i++){
-//                print("r0:inp:" + std::to_string(i) + ":0:\t", (uint8_t*)&allInputLabels[2*i], 16);
-////                print("inp:" + std::to_string(i) + ":1:\t", (uint8_t*)&allInputLabels[2*i + 1], 16);
-//            }
-//        }
-
-//        if(id == *(new Identity(1, 0, osuCrypto::Second))){
-//            uint64_t i = 5;
-////            for(uint64_t i = 0; i < allInputLabels.size() / 2; i++){
-//                print("r1:inp:" + std::to_string(i) + ":0:\t", (uint8_t*)&allInputLabels[2*i], 16);
-////                print("inp:" + std::to_string(i) + ":1:\t", (uint8_t*)&allInputLabels[2*i + 1], 16);
-////            }
-//        }
-                
+    {                
+//        std::cout << osuCrypto::IoStream::lock << "sending \t" << id.toString() << " " << allInputLabels.size() / 2 << osuCrypto::IoStream::unlock << std::endl;
         std::vector<uint8_t> com;
         commitToIO(permBit, allInputLabels, id, send_channel, true, com);
     }
@@ -249,10 +266,6 @@ namespace xhCoordinator
         std::vector<uint8_t> com(length);
         rec_channel.recv(com.data(), sizeof(uint8_t) * length);
 
-//        if(id == *(new Identity(1, 0, osuCrypto::Second))){
-//            print("inpComm:\t", com.data(), CODEWORD_BYTES);
-//            print("inpComm:\t", com.data() + CODEWORD_BYTES, CODEWORD_BYTES);
-//        }
         std::unique_lock<std::mutex> lck (mtx,std::defer_lock);
         lck.lock();
         actualInputCommitments[id.mComputationId][id.circuitOffset] = std::move(com);
@@ -263,20 +276,6 @@ namespace xhCoordinator
     void
     XHCCoordinator::commitToOutput(std::vector<bool> permBit, std::vector<osuCrypto::block> allOutputLabels, Identity id, osuCrypto::Channel &send_channel)
     {
-//        if(id == *(new Identity(0, 0, osuCrypto::First))){
-////            uint64_t i = 0;
-//            for(uint64_t i = 0; i < allOutputLabels.size() / 2; i++){
-//                print("r0:out:" + std::to_string(i) + ":0:\t", (uint8_t*)&allOutputLabels[2*i], 16);
-////                print("out:" + std::to_string(i) + ":1:\t", (uint8_t*)&allOutputLabels[2*i + 1], 16);
-//            }
-//        }
-//        if(id == *(new Identity(0, 0, osuCrypto::Second))){
-//            uint64_t i = 5;
-////            for(uint64_t i = 0; i < allOutputLabels.size() / 2; i++){
-//                print("r1:out:" + std::to_string(i) + ":0:\t", (uint8_t*)&allOutputLabels[2*i], 16);
-////                print("out:" + std::to_string(i) + ":1:\t", (uint8_t*)&allOutputLabels[2*i + 1], 16);
-////            }
-//        }
         std::vector<uint8_t> com;
         commitToIO(permBit, allOutputLabels, id, send_channel, false, com);
 
@@ -288,9 +287,6 @@ namespace xhCoordinator
         int length = outputSize * 3 * CODEWORD_BYTES;
         std::vector<uint8_t> com(length);
         rec_channel.recv(com.data(), sizeof(uint8_t) * length);
-//        if(id == *(new Identity(0, 0, osuCrypto::Second))){
-//            print("outComm:\t", com.data(), CODEWORD_BYTES);
-//        }
 
         std::unique_lock<std::mutex> lck (mtx,std::defer_lock);
         lck.lock();
@@ -354,7 +350,7 @@ namespace xhCoordinator
             std::vector<uint8_t[CODEWORD_BYTES]> inpCommitShares(3 * inputWireIndexes.size() * bucketSize);
             std::vector<uint8_t[CODEWORD_BYTES]> xorCommitShares(3 * inputWireIndexes.size() * bucketSize);
             
-            for(int bs = 0; bs < bucketSize; bs++){
+            for(uint64_t bs = 0; bs < bucketSize; bs++){
                 Identity newSrcId(srcId.mComputationId, srcId.circuitOffset + bs, srcId.mRole);
                 Identity newDstId(dstId.mComputationId, dstId.circuitOffset + bs, dstId.mRole);
                 for(uint64_t j = 0; j < outputWireIndexes.size(); j++){
@@ -405,7 +401,7 @@ namespace xhCoordinator
         for(uint64_t circuitOffsetInBucket = 0; circuitOffsetInBucket < bucketSize; circuitOffsetInBucket++){
             int offsetInXor = circuitOffsetInBucket * commitPerBucket;
             
-            garbledInputValue[circuitOffsetInBucket].resize(garbledOutputValue.size());
+            garbledInputValue[circuitOffsetInBucket].resize(inputWireIndexes.size());
             
             for(uint64_t i = 0; i < garbledInputValue[circuitOffsetInBucket].size(); i++){
                 // open the commitment on permutation bits
@@ -418,13 +414,13 @@ namespace xhCoordinator
                 int permDelta = (receivedXorCommitShares[offsetInXor + 3 * i + 2][0] & 1);
 
 
-                int outputOffset = baseOutputOffset + osuCrypto::PermuteBit(garbledOutputValue[i]) * CODEWORD_BYTES;
-                int inputOffset = baseInputOffset + (osuCrypto::PermuteBit(garbledOutputValue[i]) ^ permDelta) * CODEWORD_BYTES;
+                int outputOffset = baseOutputOffset + osuCrypto::PermuteBit(garbledOutputValue[outputWireIndexes[i]]) * CODEWORD_BYTES;
+                int inputOffset = baseInputOffset + (osuCrypto::PermuteBit(garbledOutputValue[outputWireIndexes[i]]) ^ permDelta) * CODEWORD_BYTES;
 
                 // TODO: the use of index i below is incorrect. It works now since we have essentially made receivedXorCommitShares to be always zero
                 XOR_CodeWords(receivedXorCommitShares[offsetInXor + 3 * i + permDelta], actualOutputCommitments[srcId.mComputationId][srcId.circuitOffset].data() + outputOffset);
                 XOR_CodeWords(receivedXorCommitShares[offsetInXor + 3 * i + permDelta], actualInputCommitments[srcId.mComputationId][srcId.circuitOffset + circuitOffsetInBucket].data() + inputOffset);
-                xorBlockWithUint8(garbledInputValue[circuitOffsetInBucket][i], garbledOutputValue[i], receivedXorCommitShares[offsetInXor + 3 * i + permDelta]);
+                xorBlockWithUint8(garbledInputValue[circuitOffsetInBucket][i], garbledOutputValue[outputWireIndexes[i]], receivedXorCommitShares[offsetInXor + 3 * i + permDelta]);
 
 //                if(dstId == *(new Identity(1, 0, osuCrypto::First)) && circuitOffsetInBucket == 0 && i == 5){
 //                    print("r0Inp:" + std::to_string(i) + ":\t", (uint8_t*)&garbledInputValue[circuitOffsetInBucket][i], 16);
@@ -432,7 +428,6 @@ namespace xhCoordinator
 //                if(dstId == *(new Identity(1, 0, osuCrypto::Second)) && circuitOffsetInBucket == 0){
 //                    print("r1Inp:" + std::to_string(i) + ":\t", (uint8_t*)&garbledInputValue[circuitOffsetInBucket][i], 16);
 //                }
-
 
     //            if(srcId == *(new Identity(0, 0, osuCrypto::Second))){
     //                print("inp[" + std::to_string(i) + "]:\t", (uint8_t*)&garbledInputValue[i], 16);

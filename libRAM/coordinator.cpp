@@ -10,10 +10,9 @@ namespace batchRam
     chl(myChl),
     role(myRole)
     {
-        int num_commits = 1;
 //        std::cout << "in Coord, going to configure" << std::endl;
         ramConfig::configure(memoryLength, memoryCellLength, instructionLength);
-        xhcCoordinator = new xhCoordinator::XHCCoordinator(num_commits, role);
+        xhcCoordinator = new xhCoordinator::XHCCoordinator(role);
 //        std::cout << "going to init" << std::endl;
         initialize(circ_path_prefix, *xhcCoordinator, numExec, bucketSize, numOpened, psiSecParam, numConcurrentSetups, numConcurrentEvals, numThreadsPerEval);
 //        std::cout << "going to run main loop" << std::endl;
@@ -57,40 +56,139 @@ namespace batchRam
         
 //        lookup2PC.setXHCLib();
         // TODO: perform two lookups
-        
-//        std::cout << "going to create and run lookup & read" << std::endl;
-        lookup2PC = new Batch2PC(circ_path_prefix + "lookup.circ", role, xhcCoordinator, "lookup", 0, numExec, bucketSize, numOpened, psiSecParam, numConcurrentSetups, numConcurrentEvals, numThreadsPerEval);
-        read2PC = new Batch2PC(circ_path_prefix + "lookup.circ", role, xhcCoordinator, "read", 1, numExec, bucketSize, numOpened, psiSecParam, numConcurrentSetups, numConcurrentEvals, numThreadsPerEval);
+        osuCrypto::Timer timer;
 
-        lookup2PC->initEvaluate();
-        read2PC->initEvaluate();
+//        std::cout << "Offline" << std::endl;
         
-        std::vector<osuCrypto::block> lookupGarbledOutputs;
-        std::vector<osuCrypto::block> readGarbledOutputs;
-        Identity lookupBucketHeadId;
-        Identity readBucketHeadId;
+        auto startXHCOffline = timer.setTimePoint("s_xhc_offline");
+        int rwCount = 3;
+        int numberOfComputations = rwCount * 3 + 1;
+//        int garbledCircuitOverhead = 2865; // assuming running the computation 1024 times and having 2 circuits per bucket
+        int garbledCircuitOverhead = numExec * bucketSize;
         
+        int wordSize = ramConfig::dataLength;
+        int readWriteIOCount = 2 * (ramConfig::elementsPerNode * (2 * ramConfig::logN + wordSize + 1) * (ramConfig::logN + 1)) + 2 * ramConfig::logN + wordSize;
+        int evictIOCount =  2 * (ramConfig::elementsPerNode * (2 * ramConfig::logN + wordSize + 1) * (ramConfig::logN + 1)) + ramConfig::logN;
+        int uiIOCount = ramConfig::instructionLength + 5 * (ramConfig::logN + ramConfig::dataLength) + 1;
+        int totalIOCount = 2 * readWriteIOCount + evictIOCount + uiIOCount;
+  
+        xhcCoordinator.xhcOfflinePhase(numberOfComputations, garbledCircuitOverhead, totalIOCount);
+        auto endXHCOffline = timer.setTimePoint("s_xhc_offline");
+
+        auto startOffline = timer.setTimePoint("s_offline");
+        for(int k = 0; k < rwCount; k++){
+            read2PC.push_back(new   Read2PC(ramConfig::dataLength, circ_path_prefix, role, xhcCoordinator, rwCount * 0 + k, numExec, bucketSize, numOpened, psiSecParam, numConcurrentSetups, numConcurrentEvals, numThreadsPerEval));
+            write2PC.push_back(new Write2PC(ramConfig::dataLength, circ_path_prefix, role, xhcCoordinator, rwCount * 1 + k, numExec, bucketSize, numOpened, psiSecParam, numConcurrentSetups, numConcurrentEvals, numThreadsPerEval));
+            evict2PC.push_back(new Evict2PC(ramConfig::dataLength, circ_path_prefix, role, xhcCoordinator, rwCount * 2 + k, numExec, bucketSize, numOpened, psiSecParam, numConcurrentSetups, numConcurrentEvals, numThreadsPerEval));
+        }
+        universalInstruction2PC = new UniversalInstruction2PC(circ_path_prefix, role, xhcCoordinator, rwCount * 3, numExec, bucketSize, numOpened, psiSecParam, numConcurrentSetups, numConcurrentEvals, numThreadsPerEval);
+        auto endOffline = timer.setTimePoint("e_offline");
+
+//        std::cout << "Init Online" << std::endl;
+        auto startInitOnline = timer.setTimePoint("s_initOnline");
+        for(int k = 0; k < rwCount; k++){
+            read2PC[k]->initEvaluate();
+            write2PC[k]->initEvaluate();
+            evict2PC[k]->initEvaluate();
+        }
+        universalInstruction2PC->initEvaluate();
+        
+        
+//        lookup2PC->initEvaluate();
+//        read2PC->initEvaluate();
+//        write2PC->initEvaluate();
+//        halt2PC->initEvaluate();
+//        universalInstruction2PC->initEvaluate();
+//        evict2PC->initEvaluate();
+        auto endInitOnline = timer.setTimePoint("e_initOnline");
+        
+        std::vector<osuCrypto::block> FIX_ME_GarbledOutputs;
+//        std::vector<osuCrypto::block> readGarbledOutputs;
+//        std::vector<osuCrypto::block> uiGarbledOutputs;
+//        Identity readBucketHeadId;
+//        Identity uiBucketHeadId;
+//        std::vector<uint64_t> outputWireIndexes;
+//        std::vector<uint64_t> inputWireIndexes;
+        
+//        std::cout << "Online" << std::endl;
+        auto startOnline = timer.setTimePoint("s_online");
         for (osuCrypto::u64 i = 0; i < static_cast<osuCrypto::u64>(numExec); i += numConcurrentEvals)
         {
-            lookup2PC->evaluate(i, lookupGarbledOutputs, *(new std::vector<uint64_t>(0)), *(new std::vector<std::vector<osuCrypto::block>>(0)));
-            
-            
-            lookupBucketHeadId = lookup2PC->getBucketHeadId(i);
-            readBucketHeadId = read2PC->getBucketHeadId(i);
-            
-            std::vector<uint64_t> outputWireIndexes = lookup2PC->getRelativeOutputWireIndexes(); // Note that this is the relative address, not the actual index. Which is what we want!
-            std::vector<uint64_t> inputWireIndexes = read2PC->getRelativeInputWireIndexes(); // This should be the actual index, although the actual and relative are both the same
-            std::vector<std::vector<osuCrypto::block>> garbledInputValue(bucketSize);
-            xhcCoordinator.translateBucketHeads(lookupBucketHeadId, outputWireIndexes, lookupGarbledOutputs, readBucketHeadId, inputWireIndexes, garbledInputValue, i);
+//////            lookup2PC->evaluate(i, lookupGarbledOutputs, *(new std::vector<uint64_t>(0)), *(new std::vector<std::vector<osuCrypto::block>>(0)));
+//////            
+//////            lookupBucketHeadId = lookup2PC->getBucketHeadId(i);
+//////            readBucketHeadId = read2PC->getBucketHeadId(i);
+//////            outputWireIndexes = lookup2PC->getRelativeOutputWireIndexes();
+//////            inputWireIndexes = read2PC->getRelativeInputWireIndexes();
+//////            std::vector<std::vector<osuCrypto::block>> garbledInputValue(bucketSize);
+//////            xhcCoordinator.translateBucketHeads(lookupBucketHeadId, outputWireIndexes, lookupGarbledOutputs, readBucketHeadId, inputWireIndexes, garbledInputValue, i);
+////
+////            read2PC->evaluate(i, readGarbledOutputs, *(new std::vector<uint64_t>(0)), *(new std::vector<std::vector<osuCrypto::block>>(0)));
+//////            read2PC->evaluate(i, readGarbledOutputs, inputWireIndexes, garbledInputValue);
+//////            write2PC->evaluate(i, readGarbledOutputs, *(new std::vector<uint64_t>(0)), *(new std::vector<std::vector<osuCrypto::block>>(0)));
+//////            halt2PC->evaluate(i, readGarbledOutputs, *(new std::vector<uint64_t>(0)), *(new std::vector<std::vector<osuCrypto::block>>(0)));
+//////            universalInstruction2PC->evaluate(i, readGarbledOutputs, *(new std::vector<uint64_t>(0)), *(new std::vector<std::vector<osuCrypto::block>>(0)));
+//////            evict2PC->evaluate(i, readGarbledOutputs, *(new std::vector<uint64_t>(0)), *(new std::vector<std::vector<osuCrypto::block>>(0)));
+//            
+//            read2PC->evaluate(i, readGarbledOutputs, *(new std::vector<uint64_t>(0)), *(new std::vector<std::vector<osuCrypto::block>>(0)));
+//            readBucketHeadId = read2PC->getBucketHeadId(i);
+//            uiBucketHeadId = universalInstruction2PC->getBucketHeadId(i);            
+//            outputWireIndexes = read2PC->getOutputSegmentWireIndexes("RDATA");
+//            inputWireIndexes = universalInstruction2PC->getInputSegmentWireIndexes("ARG_DATA1");
+//            std::vector<std::vector<osuCrypto::block>> garbledInputValue(bucketSize);
+//            xhcCoordinator.translateBucketHeads(readBucketHeadId, outputWireIndexes, readGarbledOutputs, uiBucketHeadId, inputWireIndexes, garbledInputValue, i);
+//            std::cout << "------- Iteration: " << i << std::endl;
+//            universalInstruction2PC->evaluate(i, uiGarbledOutputs, inputWireIndexes, garbledInputValue);
+//            std::cout << "------- Iteration: success" << std::endl;
+                        
+           for(int k = 0; k < rwCount; k++){
+                read2PC[k]->evaluate(i, FIX_ME_GarbledOutputs, *(new std::vector<uint64_t>(0)), *(new std::vector<std::vector<osuCrypto::block>>(0)));
+                
+//                Identity fstBktHdId1 = read2PC[k]->getBucketHeadId(i);
+//                Identity sndBktHdId1 = write2PC[k]->getBucketHeadId(i);            
+//                std::vector<uint64_t> outputWireIndexes1 = read2PC[k]->getOutputSegmentWireIndexes("BRANCH");
+//                std::vector<uint64_t> inputWireIndexes1 = write2PC[k]->getInputSegmentWireIndexes("BRANCH");
+//                std::vector<std::vector<osuCrypto::block>> garbledInputValue1(bucketSize);
+//                xhcCoordinator.translateBucketHeads(fstBktHdId1, outputWireIndexes1, FIX_ME_GarbledOutputs, sndBktHdId1, inputWireIndexes1, garbledInputValue1, i);
 
-            //print("out0: ", (uint8_t *)&lookupGarbledOutputs[0][0], 32);
-            // get output of lookup and set input of read using dummy XHC (e.g. simple XOR)
-            read2PC->evaluate(i, readGarbledOutputs, inputWireIndexes, garbledInputValue);
+                write2PC[k]->evaluate(i, FIX_ME_GarbledOutputs, *(new std::vector<uint64_t>(0)), *(new std::vector<std::vector<osuCrypto::block>>(0)));
+
+//                Identity fstBktHdId2 = write2PC[k]->getBucketHeadId(i);
+//                Identity sndBktHdId2 = evict2PC[k]->getBucketHeadId(i);            
+//                std::vector<uint64_t> outputWireIndexes2 = write2PC[k]->getOutputSegmentWireIndexes("BRANCH");
+//                std::vector<uint64_t> inputWireIndexes2 = evict2PC[k]->getInputSegmentWireIndexes("BRANCH");
+//                std::vector<std::vector<osuCrypto::block>> garbledInputValue2(bucketSize);
+//                xhcCoordinator.translateBucketHeads(fstBktHdId2, outputWireIndexes2, FIX_ME_GarbledOutputs, sndBktHdId2, inputWireIndexes2, garbledInputValue2, i);
+
+                evict2PC[k]->evaluate(i, FIX_ME_GarbledOutputs, *(new std::vector<uint64_t>(0)), *(new std::vector<std::vector<osuCrypto::block>>(0)));
+           }
+           universalInstruction2PC->evaluate(i, FIX_ME_GarbledOutputs, *(new std::vector<uint64_t>(0)), *(new std::vector<std::vector<osuCrypto::block>>(0)));
         }
+        auto endOnline = timer.setTimePoint("e_online");
         
+        auto xhcoffline = std::chrono::duration_cast<std::chrono::microseconds>(endXHCOffline - startXHCOffline).count();
+        auto offline = std::chrono::duration_cast<std::chrono::microseconds>(endOffline - startOffline).count();
+        auto initOnline = std::chrono::duration_cast<std::chrono::microseconds>(endInitOnline - startInitOnline).count();
+        auto online = std::chrono::duration_cast<std::chrono::microseconds>(endOnline - startOnline).count();
+        std::cout << osuCrypto::IoStream::lock << "total xhc_offline  = " << xhcoffline / 1000.0 << " ms" << osuCrypto::IoStream::unlock << std::endl;
+        std::cout << osuCrypto::IoStream::lock << "total offline      = " << offline / 1000.0 << " ms" << osuCrypto::IoStream::unlock << std::endl;
+        std::cout << osuCrypto::IoStream::lock << "total init_online  = " << initOnline / 1000.0 << " ms" << osuCrypto::IoStream::unlock << std::endl;
+        std::cout << osuCrypto::IoStream::lock << "total online       = " << online / 1000.0 << " ms" << osuCrypto::IoStream::unlock << std::endl;
+        std::cout << osuCrypto::IoStream::lock << "each  online       = " << (online / 1000.0) / numExec << " ms" << osuCrypto::IoStream::unlock << std::endl;
         
-        lookup2PC->cleanup();
-        read2PC->cleanup();        
+        for(int k = 0; k < rwCount; k++){
+            read2PC[k]->cleanup();
+            write2PC[k]->cleanup();
+            evict2PC[k]->cleanup();
+        }
+        universalInstruction2PC->cleanup();
+        
+//        lookup2PC->cleanup();
+//        read2PC->cleanup();
+//        write2PC->cleanup();
+//        halt2PC->cleanup();
+//        universalInstruction2PC->cleanup();
+//        evict2PC->cleanup();
     }
 
     void
@@ -106,7 +204,7 @@ namespace batchRam
     }
 
     void
-    Coordinator::lookup(int bucketIdx, Batch2PC src, int srcBktIdx, std::vector<int> srcInputWireIndexes)
+    Coordinator::lookup(int bucketIdx, Batch2PC &src, int srcBktIdx, std::vector<int> srcInputWireIndexes)
     {
 //        int directInputLengths[] = {ramConfig::logN, ramConfig::logN};
 //        lookup2PC.setDirectInputWires(bucketIdx, directInputLengths);
@@ -211,7 +309,7 @@ namespace batchRam
     //---------------------------------------------------------------------------------------------------------------------------------
 
     void
-    Coordinator::connectBktToBkt(Batch2PC src, int srcBktIdx, std::vector<int> srcWireIndexes, Batch2PC dst, int dstBktIdx, std::vector<int> dstWireIndexes)
+    Coordinator::connectBktToBkt(Batch2PC &src, int srcBktIdx, std::vector<int> srcWireIndexes, Batch2PC &dst, int dstBktIdx, std::vector<int> dstWireIndexes)
     {
 //        assert(std::is_same(srcWireIndexes.size(), dstWireIndexes.size()));
 //
@@ -289,7 +387,7 @@ namespace batchRam
     }
     
     void
-    Coordinator::connectRamToBkt(Batch2PC dst, int srcBktIdx, std::vector<int> dstWireIndexes)
+    Coordinator::connectRamToBkt(Batch2PC &dst, int srcBktIdx, std::vector<int> dstWireIndexes)
     {
 //        // as in connectBktToBkt, the parties know what needs to be connected based on wireIndexes and nextLeafAccess
 //        batchRam::Branch branch = ram.getBranch(nextLeafAccess);

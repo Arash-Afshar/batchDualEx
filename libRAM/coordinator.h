@@ -12,6 +12,8 @@
 #include "cryptoTools/Common/Defines.h"
 #include "cryptoTools/Common/ByteStream.h"
 #include "cryptoTools/Network/Channel.h"
+#include "cryptoTools/Common/Timer.h"
+#include <chrono>
 
 namespace batchRam
 {
@@ -54,7 +56,7 @@ namespace batchRam
          * @param srcBktIdx
          * @param srcInputWireIndexes
          */
-        void lookup(int bucketIdx, Batch2PC src, int srcBktIdx, std::vector<int> srcInputWireIndexes);
+        void lookup(int bucketIdx, Batch2PC &src, int srcBktIdx, std::vector<int> srcInputWireIndexes);
         
         /**
          * It reads the branch corresponding to the previously generated leaf id (from lookup).
@@ -89,7 +91,7 @@ namespace batchRam
          * @param dstBktIdx
          * @param dstWireIndexes
          */
-        void connectBktToBkt(Batch2PC src, int srcBktIdx, std::vector<int> srcWireIndexes, Batch2PC dst, int dstBktIdx, std::vector<int> dstWireIndexes);
+        void connectBktToBkt(Batch2PC &src, int srcBktIdx, std::vector<int> srcWireIndexes, Batch2PC &dst, int dstBktIdx, std::vector<int> dstWireIndexes);
 
         /**
          * It connects a set of garbled output values from a set of previous execution (which are stored in the RAM) to the garbled inputs needed for current execution.
@@ -99,7 +101,7 @@ namespace batchRam
          * @param srcBktIdx
          * @param srcWireIndexes
          */
-        void connectRamToBkt(Batch2PC src, int srcBktIdx, std::vector<int> srcWireIndexes);
+        void connectRamToBkt(Batch2PC &src, int srcBktIdx, std::vector<int> srcWireIndexes);
         
         /**
          * It fetches the argument values for the current instruction
@@ -130,9 +132,12 @@ namespace batchRam
         
         
     private:
-        Batch2PC *lookup2PC;
-        Batch2PC *read2PC;
-        Batch2PC *write2PC;
+//        Batch2PC *lookup2PC;
+//        Batch2PC *write2PC;
+//        Batch2PC *evict2PC;
+        std::vector<Read2PC*> read2PC;
+        std::vector<Write2PC*> write2PC;
+        std::vector<Evict2PC*> evict2PC;
         Batch2PC *halt2PC;
         Batch2PC *universalInstruction2PC;
 //        RandomAccessMemory ram;

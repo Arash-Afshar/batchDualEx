@@ -1,0 +1,80 @@
+#define WORD DDD
+#define COMD 4
+#define ADDR LGQ
+#define INPSE COMD + 2*ADDR + 2*WORD + ADDR + WORD
+#define INPSG 1
+#define OUTS ADDR + WORD + WORD + ADDR
+#define DUMMYLOC 1
+/*---- batchMalicious2PC requires both parties have inputs. Therefore we add a dummy input for the garbler --*/
+/*---- input: command + 2 * arguments + 2 * the value of the position the argument is pointing at + pc + last read data ----*/
+/*---- output: new pc + last read data + write data + write address ----*/
+/*---- dummyloc is the place where we write we don't actually want to write anything! ---*/
+
+
+#parties 2
+
+#input 1 garbinputlen
+#input 2 evalinputlen
+#output 1 outputlen
+
+typedef uint_t INPSG garbinputlen
+typedef uint_t INPSE evalinputlen
+typedef uint_t OUTS outputlen
+typedef uint_t COMD command
+typedef uint_t WORD data
+typedef uint_t ADDR address
+typedef uint_t 1 useless
+
+function void main()
+{
+    useless noUse = input1{0};
+    command com   = input2{0                             :COMD};
+    address arg1  = input2{COMD                          :ADDR};
+    address arg2  = input2{COMD+ADDR                     :ADDR};
+    data    inp1  = input2{COMD+ADDR+ADDR                :WORD};
+    data    inp2  = input2{COMD+ADDR+ADDR+WORD           :WORD};
+    address pc    = input2{COMD+ADDR+ADDR+WORD+WORD      :ADDR};
+    data    rdata = input2{COMD+ADDR+ADDR+WORD+WORD+ADDR :WORD};
+
+    address newPC    = pc + 1;
+    data    newRdata = rdata;
+    data    writeVAL = 0;
+    address writeLOC = DUMMYLOC;
+
+    if (com == 0){ /* JMP */
+        newPC = arg1;
+    }else if (com == 1){ /* JLT */
+        if (rdata < 0){
+            newPC = arg1;
+        }
+    }else if (com == 2){ /* JGT */
+        if (rdata > 0){
+            newPC = arg1;
+        }
+    }else if (com == 3){ /* JEQ */
+        if (rdata == 0){
+            newPC = arg1;
+        }
+    }else if (com == 4){ /* JNE */
+        if (rdata != 0){
+            newPC = arg1;
+        }
+    }else if (com == 5){ /* ADD */
+        newRdata = inp1 + inp2;
+    }else if (com == 6){ /* SUB */
+        newRdata = inp1 - inp2;
+    }else if (com == 7){ /* HLT */
+        /* do nothing */
+    }else if (com == 8){ /* MOV */
+        writeLOC = arg1;
+        writeVAL = inp2;
+    }else if (com == 9){ /* DRF */
+        newRdata = inp1;
+    }
+
+    output1{0             :ADDR} = newPC;
+    output1{ADDR          :WORD} = newRdata;
+    output1{ADDR+WORD     :WORD} = writeVAL;
+    output1{ADDR+WORD+WORD:ADDR} = writeLOC;
+}
+

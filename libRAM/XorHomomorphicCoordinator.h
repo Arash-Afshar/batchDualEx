@@ -11,6 +11,8 @@
 #include "identity.h"
 #include "split-commit/split-commit-snd.h"
 #include "split-commit/split-commit-rec.h"
+#include "Circuit/Wire.h"
+#include "cryptoTools/Common/Log.h"
 
 namespace xhCoordinator
 {
@@ -20,7 +22,7 @@ namespace xhCoordinator
     public:
         
         XHCCoordinator() = delete;
-        XHCCoordinator(int num_commits, osuCrypto::Role role);
+        XHCCoordinator(osuCrypto::Role role);
         ~XHCCoordinator();
 
         
@@ -60,6 +62,8 @@ namespace xhCoordinator
         
         void translateBucketHeads(Identity srcId, std::vector<uint64_t> outputWireIndexes, std::vector<osuCrypto::block> garbledOutputValue, Identity dstId, std::vector<uint64_t> inputWireIndexes, std::vector<std::vector<osuCrypto::block>> &garbledInputValue, uint64_t evalId);
         
+        void xhcOfflinePhase(int numberOfComputations, int garbledCircuitOverhead, int totalIOCount);
+        
     private:
         std::vector<SplitCommitSender> *senders;
         std::vector<SplitCommitReceiver> *receivers;
@@ -75,10 +79,10 @@ namespace xhCoordinator
 //        std::array<BYTEArrayVector, 2> random_commitments;
         // these are hard coded configs
         // TODO: should be configured in config.cpp and accessed here
-        int startInRandCommit[4];
-        int perCircuitSize[4];
-        int perInputSize[4];
-        int outputStartOffset[4];
+        int startInRandCommit[6];
+        int perCircuitSize[6];
+        int perInputSize[6];
+        int outputStartOffset[6];
 
         void sendRandomCommits(std::vector<SplitCommitSender> &senders, osuCrypto::Role role, int num_execs, int num_commits);
         void receiveRandomCommits(std::vector<SplitCommitReceiver> &receivers, std::vector<osuCrypto::PRNG> &exec_rnds, osuCrypto::Role role, int num_execs, int num_commits);

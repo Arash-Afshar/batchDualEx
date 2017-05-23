@@ -18,7 +18,7 @@ namespace batchRam
     }
     
     void
-    RandomAccessMemory::update(Batch2PC rw2PC, std::vector<int> wireIndexes, int readBktIdx, int nextLeafAccess)
+    RandomAccessMemory::update(Batch2PC &rw2PC, std::vector<int> wireIndexes, int readBktIdx, int nextLeafAccess)
     {
         
     }
