@@ -61,34 +61,46 @@ namespace batchRam
 //        std::cout << "Offline" << std::endl;
         
         auto startXHCOffline = timer.setTimePoint("s_xhc_offline");
-        int rwCount = 3;
-        int numberOfComputations = rwCount * 3 + 1;
+        int recursiveRatio = 4;
+        int recursiveIterationsCount = std::log2(ramConfig::N) / std::log2(recursiveRatio) - 1;
+        int rwCount = 4;
+        int computationsInEachIteration = 2 + 2 * recursiveIterationsCount;
+        int numberOfComputations = rwCount * computationsInEachIteration + 1;
 //        int garbledCircuitOverhead = 2865; // assuming running the computation 1024 times and having 2 circuits per bucket
         int garbledCircuitOverhead = numExec * bucketSize;
         
+        int memSize = ramConfig::N;
         int wordSize = ramConfig::dataLength;
         int readWriteIOCount = 2 * (ramConfig::elementsPerNode * (2 * ramConfig::logN + wordSize + 1) * (ramConfig::logN + 1)) + 2 * ramConfig::logN + wordSize;
         int evictIOCount =  2 * (ramConfig::elementsPerNode * (2 * ramConfig::logN + wordSize + 1) * (ramConfig::logN + 1)) + ramConfig::logN;
         int uiIOCount = ramConfig::instructionLength + 5 * (ramConfig::logN + ramConfig::dataLength) + 1;
-        int totalIOCount = 2 * readWriteIOCount + evictIOCount + uiIOCount;
+        int totalIOCount = rwCount * (1 + recursiveIterationsCount) * (readWriteIOCount + evictIOCount) + uiIOCount;
   
         xhcCoordinator.xhcOfflinePhase(numberOfComputations, garbledCircuitOverhead, totalIOCount);
         auto endXHCOffline = timer.setTimePoint("s_xhc_offline");
 
         auto startOffline = timer.setTimePoint("s_offline");
-        for(int k = 0; k < rwCount; k++){
-            read2PC.push_back(new   Read2PC(ramConfig::dataLength, circ_path_prefix, role, xhcCoordinator, rwCount * 0 + k, numExec, bucketSize, numOpened, psiSecParam, numConcurrentSetups, numConcurrentEvals, numThreadsPerEval));
-            write2PC.push_back(new Write2PC(ramConfig::dataLength, circ_path_prefix, role, xhcCoordinator, rwCount * 1 + k, numExec, bucketSize, numOpened, psiSecParam, numConcurrentSetups, numConcurrentEvals, numThreadsPerEval));
-            evict2PC.push_back(new Evict2PC(ramConfig::dataLength, circ_path_prefix, role, xhcCoordinator, rwCount * 2 + k, numExec, bucketSize, numOpened, psiSecParam, numConcurrentSetups, numConcurrentEvals, numThreadsPerEval));
+        for(int k = 0; k < rwCount; k++){ // read2PC and write2PC have the same computation overhead. Thus, I will use read2Pc inplace of both read2PC and write2PC
+            int startID = computationsInEachIteration * k;
+            read2PC.push_back(new   Read2PC(ramConfig::dataLength, circ_path_prefix, role, xhcCoordinator, startID + 0, numExec, bucketSize, numOpened, psiSecParam, numConcurrentSetups, numConcurrentEvals, numThreadsPerEval));
+            evict2PC.push_back(new Evict2PC(ramConfig::dataLength, circ_path_prefix, role, xhcCoordinator, startID + 1, numExec, bucketSize, numOpened, psiSecParam, numConcurrentSetups, numConcurrentEvals, numThreadsPerEval));
+            
+            memSize = ramConfig::N;
+            for (int q = 0; q < recursiveIterationsCount; q++){
+                memSize = memSize / recursiveRatio;
+                wordSize = std::log2(memSize);
+                read2PC.push_back(new   Read2PC(wordSize, circ_path_prefix, role, xhcCoordinator, startID + 2 + 2 * q + 0, numExec, bucketSize, numOpened, psiSecParam, numConcurrentSetups, numConcurrentEvals, numThreadsPerEval));
+                evict2PC.push_back(new Evict2PC(wordSize, circ_path_prefix, role, xhcCoordinator, startID + 2 + 2 * q + 1, numExec, bucketSize, numOpened, psiSecParam, numConcurrentSetups, numConcurrentEvals, numThreadsPerEval));
+            }
+
         }
-        universalInstruction2PC = new UniversalInstruction2PC(circ_path_prefix, role, xhcCoordinator, rwCount * 3, numExec, bucketSize, numOpened, psiSecParam, numConcurrentSetups, numConcurrentEvals, numThreadsPerEval);
+        universalInstruction2PC = new UniversalInstruction2PC(circ_path_prefix, role, xhcCoordinator, rwCount * computationsInEachIteration, numExec, bucketSize, numOpened, psiSecParam, numConcurrentSetups, numConcurrentEvals, numThreadsPerEval);
         auto endOffline = timer.setTimePoint("e_offline");
 
 //        std::cout << "Init Online" << std::endl;
         auto startInitOnline = timer.setTimePoint("s_initOnline");
-        for(int k = 0; k < rwCount; k++){
+        for(int k = 0; k < rwCount * (1 + recursiveIterationsCount); k++){
             read2PC[k]->initEvaluate();
-            write2PC[k]->initEvaluate();
             evict2PC[k]->initEvaluate();
         }
         universalInstruction2PC->initEvaluate();
@@ -141,7 +153,7 @@ namespace batchRam
 //            universalInstruction2PC->evaluate(i, uiGarbledOutputs, inputWireIndexes, garbledInputValue);
 //            std::cout << "------- Iteration: success" << std::endl;
                         
-           for(int k = 0; k < rwCount; k++){
+           for(int k = 0; k < rwCount * (1 + recursiveIterationsCount); k++){
                 read2PC[k]->evaluate(i, FIX_ME_GarbledOutputs, *(new std::vector<uint64_t>(0)), *(new std::vector<std::vector<osuCrypto::block>>(0)));
                 
 //                Identity fstBktHdId1 = read2PC[k]->getBucketHeadId(i);
@@ -150,15 +162,6 @@ namespace batchRam
 //                std::vector<uint64_t> inputWireIndexes1 = write2PC[k]->getInputSegmentWireIndexes("BRANCH");
 //                std::vector<std::vector<osuCrypto::block>> garbledInputValue1(bucketSize);
 //                xhcCoordinator.translateBucketHeads(fstBktHdId1, outputWireIndexes1, FIX_ME_GarbledOutputs, sndBktHdId1, inputWireIndexes1, garbledInputValue1, i);
-
-                write2PC[k]->evaluate(i, FIX_ME_GarbledOutputs, *(new std::vector<uint64_t>(0)), *(new std::vector<std::vector<osuCrypto::block>>(0)));
-
-//                Identity fstBktHdId2 = write2PC[k]->getBucketHeadId(i);
-//                Identity sndBktHdId2 = evict2PC[k]->getBucketHeadId(i);            
-//                std::vector<uint64_t> outputWireIndexes2 = write2PC[k]->getOutputSegmentWireIndexes("BRANCH");
-//                std::vector<uint64_t> inputWireIndexes2 = evict2PC[k]->getInputSegmentWireIndexes("BRANCH");
-//                std::vector<std::vector<osuCrypto::block>> garbledInputValue2(bucketSize);
-//                xhcCoordinator.translateBucketHeads(fstBktHdId2, outputWireIndexes2, FIX_ME_GarbledOutputs, sndBktHdId2, inputWireIndexes2, garbledInputValue2, i);
 
                 evict2PC[k]->evaluate(i, FIX_ME_GarbledOutputs, *(new std::vector<uint64_t>(0)), *(new std::vector<std::vector<osuCrypto::block>>(0)));
            }
@@ -176,9 +179,8 @@ namespace batchRam
         std::cout << osuCrypto::IoStream::lock << "total online       = " << online / 1000.0 << " ms" << osuCrypto::IoStream::unlock << std::endl;
         std::cout << osuCrypto::IoStream::lock << "each  online       = " << (online / 1000.0) / numExec << " ms" << osuCrypto::IoStream::unlock << std::endl;
         
-        for(int k = 0; k < rwCount; k++){
+        for(int k = 0; k < rwCount * (1 + recursiveIterationsCount); k++){
             read2PC[k]->cleanup();
-            write2PC[k]->cleanup();
             evict2PC[k]->cleanup();
         }
         universalInstruction2PC->cleanup();

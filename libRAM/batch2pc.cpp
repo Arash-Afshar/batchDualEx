@@ -81,7 +81,6 @@ namespace batchRam
     
     void
     Batch2PC::cleanup() {
-        std::cout << "     -->  close" << std::endl;
         actor->close();
         netMgr->stop();
         ios->stop();

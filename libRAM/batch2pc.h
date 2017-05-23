@@ -230,6 +230,8 @@ namespace batchRam
     class Read2PC : public Batch2PC{
     private:
         int recursiveDataLength;
+        int newN;
+        int newLogN;
         std::string genFilePath(std::string prefix, int dataLength){
             std::string path;
             if (dataLength <= 0){
@@ -244,11 +246,9 @@ namespace batchRam
         Read2PC(int dataLength, std::string circ_path_prefix, osuCrypto::Role role, xhCoordinator::XHCCoordinator& xhcCoordinator, int id, int numExec, int bucketSize, int numOpened, int psiSecParam, int numConcurrentSetups, int numConcurrentEvals, int numThreadsPerEval) : 
         Batch2PC(genFilePath(circ_path_prefix, dataLength), role, xhcCoordinator, "read", id, numExec, bucketSize, numOpened, psiSecParam, numConcurrentSetups, numConcurrentEvals, numThreadsPerEval)
         {
-            if (dataLength <= 0){
-                recursiveDataLength = ramConfig::dataLength;
-            } else {
-                recursiveDataLength = dataLength;
-            }
+            recursiveDataLength = dataLength;
+            newLogN = dataLength;
+            newN = std::pow(2, newLogN);
             initSegmentMaps();
         }
         
@@ -256,18 +256,18 @@ namespace batchRam
         initSegmentMaps()
         {
             // ------------------ input
-            int branch_length = ramConfig::elementsPerNode * (2 * ramConfig::logN + recursiveDataLength + 1) * (ramConfig::logN + 1);
+            int branch_length = ramConfig::elementsPerNode * (2 * newLogN + recursiveDataLength + 1) * (newLogN + 1);
             std::vector<uint64_t> branch(branch_length);
             for(int i = 0; i < branch_length; i++){
                 branch[i] = i;
             }
-            std::vector<uint64_t> real_addr(ramConfig::logN);
-            for(int i = 0; i < ramConfig::logN; i++){
+            std::vector<uint64_t> real_addr(newLogN);
+            for(int i = 0; i < newLogN; i++){
                 real_addr[i] = i + branch_length;
             }
-            std::vector<uint64_t> leaf_id(ramConfig::logN);
-            for(int i = 0; i < ramConfig::logN; i++){
-                leaf_id[i] = i + branch_length + ramConfig::logN;
+            std::vector<uint64_t> leaf_id(newLogN);
+            for(int i = 0; i < newLogN; i++){
+                leaf_id[i] = i + branch_length + newLogN;
             }
 //            std::vector<uint64_t> wdata(ramConfig::dataLength);
 //            for(int i = 0; i < ramConfig::dataLength; i++){
@@ -281,12 +281,12 @@ namespace batchRam
             // ------------------- output
             std::vector<uint64_t> out_branch(branch_length);
             for(int i = 0; i < branch_length; i++){
-                out_branch[i] = i + branch_length + ramConfig::logN + ramConfig::logN;
+                out_branch[i] = i + branch_length + newLogN + newLogN;
 //                out_branch[i] = i + branch_length + ramConfig::logN + ramConfig::logN + recursiveDataLength;
             }
             std::vector<uint64_t> out_rdata(recursiveDataLength);
             for(int i = 0; i < recursiveDataLength; i++){
-                out_rdata[i] = i + branch_length + ramConfig::logN + ramConfig::logN + branch_length;
+                out_rdata[i] = i + branch_length + newLogN + newLogN + branch_length;
             }
             outputSegments["BRANCH"] = out_branch;
             outputSegments["RDATA"] = out_rdata;            
@@ -297,13 +297,12 @@ namespace batchRam
     class Write2PC : public Batch2PC{
     private:
         int recursiveDataLength;
+        int newN;
+        int newLogN;
+
         std::string genFilePath(std::string prefix, int dataLength){
             std::string path;
-            if (dataLength <= 0){
-                path = prefix + "/write-" + std::to_string(ramConfig::N) + "-" + std::to_string(ramConfig::dataLength) + ".circ";
-            } else {
-                path = prefix + "/write-" + std::to_string(ramConfig::N) + "-" + std::to_string(dataLength) + ".circ";
-            }
+            path = prefix + "/write-" + std::to_string(ramConfig::N) + "-" + std::to_string(dataLength) + ".circ";
             return path;
         }
 
@@ -311,11 +310,9 @@ namespace batchRam
         Write2PC(int dataLength, std::string circ_path_prefix, osuCrypto::Role role, xhCoordinator::XHCCoordinator& xhcCoordinator, int id, int numExec, int bucketSize, int numOpened, int psiSecParam, int numConcurrentSetups, int numConcurrentEvals, int numThreadsPerEval) : 
         Batch2PC(genFilePath(circ_path_prefix, dataLength), role, xhcCoordinator, "write", id, numExec, bucketSize, numOpened, psiSecParam, numConcurrentSetups, numConcurrentEvals, numThreadsPerEval)
         {
-            if (dataLength <= 0){
-                recursiveDataLength = ramConfig::dataLength;
-            } else {
-                recursiveDataLength = dataLength;
-            }
+            recursiveDataLength = dataLength;
+            newLogN = dataLength;
+            newN = std::pow(2, newLogN);
             initSegmentMaps();
         }
         
@@ -323,22 +320,22 @@ namespace batchRam
         initSegmentMaps()
         {
             // ------------------ input
-            int branch_length = ramConfig::elementsPerNode * (2 * ramConfig::logN + recursiveDataLength + 1) * (ramConfig::logN + 1);
+            int branch_length = ramConfig::elementsPerNode * (2 * newLogN + recursiveDataLength + 1) * (newLogN + 1);
             std::vector<uint64_t> branch(branch_length);
             for(int i = 0; i < branch_length; i++){
                 branch[i] = i;
             }
-            std::vector<uint64_t> real_addr(ramConfig::logN);
-            for(int i = 0; i < ramConfig::logN; i++){
+            std::vector<uint64_t> real_addr(newLogN);
+            for(int i = 0; i < newLogN; i++){
                 real_addr[i] = i + branch_length;
             }
-            std::vector<uint64_t> leaf_id(ramConfig::logN);
-            for(int i = 0; i < ramConfig::logN; i++){
-                leaf_id[i] = i + branch_length + ramConfig::logN;
+            std::vector<uint64_t> leaf_id(newLogN);
+            for(int i = 0; i < newLogN; i++){
+                leaf_id[i] = i + branch_length + newLogN;
             }
             std::vector<uint64_t> wdata(ramConfig::dataLength);
             for(int i = 0; i < ramConfig::dataLength; i++){
-                wdata[i] = i + branch_length + ramConfig::logN + ramConfig::logN;
+                wdata[i] = i + branch_length + newLogN + newLogN;
             }
             inputSegments["BRANCH"] = branch;
             inputSegments["REAL_ID"] = real_addr;
@@ -348,7 +345,7 @@ namespace batchRam
             // ------------------- output
             std::vector<uint64_t> out_branch(branch_length);
             for(int i = 0; i < branch_length; i++){
-                out_branch[i] = i + branch_length + ramConfig::logN + ramConfig::logN + recursiveDataLength;
+                out_branch[i] = i + branch_length + newLogN + newLogN + recursiveDataLength;
             }
             outputSegments["BRANCH"] = out_branch;
         }
@@ -359,13 +356,12 @@ namespace batchRam
     class Evict2PC : public Batch2PC{
     private:
         int recursiveDataLength;
+        int newN;
+        int newLogN;
+
         std::string genFilePath(std::string prefix, int dataLength){
             std::string path;
-            if (dataLength <= 0){
-                path = prefix + "/evict-" + std::to_string(ramConfig::N) + "-" + std::to_string(ramConfig::dataLength) + ".circ";
-            } else {
-                path = prefix + "/evict-" + std::to_string(ramConfig::N) + "-" + std::to_string(dataLength) + ".circ";
-            }
+            path = prefix + "/evict-" + std::to_string(ramConfig::N) + "-" + std::to_string(dataLength) + ".circ";
             return path;
         }
         
@@ -373,11 +369,9 @@ namespace batchRam
         Evict2PC(int dataLength, std::string circ_path_prefix, osuCrypto::Role role, xhCoordinator::XHCCoordinator& xhcCoordinator, int id, int numExec, int bucketSize, int numOpened, int psiSecParam, int numConcurrentSetups, int numConcurrentEvals, int numThreadsPerEval) : 
         Batch2PC(genFilePath(circ_path_prefix, dataLength), role, xhcCoordinator, "evict", id, numExec, bucketSize, numOpened, psiSecParam, numConcurrentSetups, numConcurrentEvals, numThreadsPerEval)
         {
-            if (dataLength <= 0){
-                recursiveDataLength = ramConfig::dataLength;
-            } else {
-                recursiveDataLength = dataLength;
-            }
+            recursiveDataLength = dataLength;
+            newLogN = dataLength;
+            newN = std::pow(2, newLogN);
             initSegmentMaps();
         }
         
@@ -385,13 +379,13 @@ namespace batchRam
         initSegmentMaps()
         {
             // ------------------ input
-            int branch_length = ramConfig::elementsPerNode * (2 * ramConfig::logN + recursiveDataLength + 1) * (ramConfig::logN + 1);
+            int branch_length = ramConfig::elementsPerNode * (2 * newLogN + recursiveDataLength + 1) * (newLogN + 1);
             std::vector<uint64_t> branch(branch_length);
             for(int i = 0; i < branch_length; i++){
                 branch[i] = i;
             }
-            std::vector<uint64_t> real_addr(ramConfig::logN);
-            for(int i = 0; i < ramConfig::logN; i++){
+            std::vector<uint64_t> real_addr(newLogN);
+            for(int i = 0; i < newLogN; i++){
                 real_addr[i] = i + branch_length;
             }
             inputSegments["BRANCH"] = branch;
@@ -400,15 +394,13 @@ namespace batchRam
             // ------------------ output
             std::vector<uint64_t> out_branch(branch_length);
             for(int i = 0; i < branch_length; i++){
-                out_branch[i] = i + branch_length + ramConfig::logN;
+                out_branch[i] = i + branch_length + newLogN;
             }
             outputSegments["BRANCH"] = out_branch;
         }
         
     };
 
-    
-    
 }
 
 #endif
