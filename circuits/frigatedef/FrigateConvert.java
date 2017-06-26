@@ -20,13 +20,20 @@ public class FrigateConvert {
 //    * Next it lists the number of output {@code Wire}s followed by the index of each of these {@code Wires}. <p>
 //    * Then for each gate, we have the following: number of inputWires, number of OutputWires inputWireIndices OutputWireIndices and the gate's truth Table (as a 0-1 string).<P>
 //            * example file: 1 2 1 1 1 2 1 2 1 3 2 1 1 2 3 0001<p>
+    static boolean head_only = false;
+    static boolean write_and_count = false;
 
     public static void main(String[] args) throws IOException {
         String prefix = args[0] + "/";//"src/main/resources/circuits/";
         String name = args[1]; //"execute";
+        String out_post_fix= args[2];
         String frigate_out_path = prefix + name + ".out";
-        String file_path = prefix + name + ".circ";
-        String format = args[2];
+        String file_path = prefix + name + out_post_fix + ".circ";
+        String format = args[3];
+        if(args.length > 4){
+            head_only = true;
+            write_and_count = true;
+        }
 //        String frigate_out_path = args[0];
 //        String file_path = args[1];
         new FrigateConvert(frigate_out_path, file_path, format);
@@ -140,9 +147,21 @@ public class FrigateConvert {
             out.write((String.valueOf(number_of_gates) + " " + String.valueOf(max_wire + 1) + "\n").getBytes());
             out.write((String.valueOf(p1_input_count) + " " + String.valueOf(p2_input_count) + " " + String.valueOf(output_count) + "\n\n").getBytes());
         }
-        // gates
-        for(Gate gate : gates){
-            out.write((gate.convertToString(format) + "\n").getBytes());
+        if( ! head_only){
+            // gates
+            for(Gate gate : gates){
+                out.write((gate.convertToString(format) + "\n").getBytes());
+            }
+        }
+
+        if (write_and_count){
+            int and_counter = 0;
+            for(Gate gate : gates){
+                if (gate.type.equals("1000")){
+                    and_counter++;
+                }
+            }
+            out.write((String.valueOf(and_counter)).getBytes());
         }
 
         out.close();

@@ -126,7 +126,7 @@ void setup_arg_parser(int argc, const char** argv,
 
 
 	opt.add(
-		"./circuits/frigatedef/",
+		"./circuits/frigatedef/base/",
 		0,
 		1,
 		0,

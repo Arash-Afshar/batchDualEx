@@ -49,6 +49,26 @@ namespace batchRam
 //        }
     }
 
+    /* This is just for calculating the gate count*/
+    void custom_read(std::string circ_path_prefix, int memSize, int dataLen, std::string file_name){
+        std::string file = circ_path_prefix + "/" + file_name + "-" + std::to_string(memSize) + "-" + std::to_string(dataLen) + ".circ";
+        std::fstream fStrm(file);
+        if (fStrm.is_open() == false)
+        {
+            std::cout << "failed to open circuit file: " << file << std::endl;
+            throw std::runtime_error("");
+        }
+        osuCrypto::Circuit cir;
+        cir.readBris(fStrm);
+        std::cout << file << "(ALL) "  << cir.Gates().size() << std::endl;
+        std::cout << file << "(XOR) " << cir.NonXorGateCount() << std::endl;
+    }
+        
+    /* This is just for calculating the gate count*/
+    void custom_read(std::string circ_path_prefix, std::string file_name){
+        custom_read(circ_path_prefix, ramConfig::N, ramConfig::dataLength, file_name);
+    }
+        
 
     void
     Coordinator::initialize(std::string circ_path_prefix, xhCoordinator::XHCCoordinator &xhcCoordinator, int numExec, int bucketSize, int numOpened, int psiSecParam, int numConcurrentSetups, int numConcurrentEvals, int numThreadsPerEval)
@@ -77,8 +97,25 @@ namespace batchRam
         int totalIOCount = rwCount * (1 + recursiveIterationsCount) * (readWriteIOCount + evictIOCount) + uiIOCount;
   
         xhcCoordinator.xhcOfflinePhase(numberOfComputations, garbledCircuitOverhead, totalIOCount);
+//        xhcCoordinator.xhcOfflinePhase(numberOfComputations, garbledCircuitOverhead, 10);
         auto endXHCOffline = timer.setTimePoint("s_xhc_offline");
-
+              
+//        for(int k = 0; k < rwCount; k++){ // read2PC and write2PC have the same computation overhead. Thus, I will use read2Pc inplace of both read2PC and write2PC
+//            custom_read(circ_path_prefix, "read");
+//            custom_read(circ_path_prefix, "evict");
+//            
+//            memSize = ramConfig::N;
+//            for (int q = 0; q < recursiveIterationsCount; q++){
+//                memSize = memSize / recursiveRatio;
+//                wordSize = std::log2(memSize);
+//                custom_read(circ_path_prefix, memSize, wordSize, "read");
+//                custom_read(circ_path_prefix, memSize, wordSize, "evict");
+//            }
+//
+//        }
+//        custom_read(circ_path_prefix, "universalInstruction");
+        
+        
         auto startOffline = timer.setTimePoint("s_offline");
         for(int k = 0; k < rwCount; k++){ // read2PC and write2PC have the same computation overhead. Thus, I will use read2Pc inplace of both read2PC and write2PC
             int startID = computationsInEachIteration * k;
@@ -96,7 +133,6 @@ namespace batchRam
         }
         universalInstruction2PC = new UniversalInstruction2PC(circ_path_prefix, role, xhcCoordinator, rwCount * computationsInEachIteration, numExec, bucketSize, numOpened, psiSecParam, numConcurrentSetups, numConcurrentEvals, numThreadsPerEval);
         auto endOffline = timer.setTimePoint("e_offline");
-
 //        std::cout << "Init Online" << std::endl;
         auto startInitOnline = timer.setTimePoint("s_initOnline");
         for(int k = 0; k < rwCount * (1 + recursiveIterationsCount); k++){
@@ -169,16 +205,6 @@ namespace batchRam
         }
         auto endOnline = timer.setTimePoint("e_online");
         
-        auto xhcoffline = std::chrono::duration_cast<std::chrono::microseconds>(endXHCOffline - startXHCOffline).count();
-        auto offline = std::chrono::duration_cast<std::chrono::microseconds>(endOffline - startOffline).count();
-        auto initOnline = std::chrono::duration_cast<std::chrono::microseconds>(endInitOnline - startInitOnline).count();
-        auto online = std::chrono::duration_cast<std::chrono::microseconds>(endOnline - startOnline).count();
-        std::cout << osuCrypto::IoStream::lock << "total xhc_offline  = " << xhcoffline / 1000.0 << " ms" << osuCrypto::IoStream::unlock << std::endl;
-        std::cout << osuCrypto::IoStream::lock << "total offline      = " << offline / 1000.0 << " ms" << osuCrypto::IoStream::unlock << std::endl;
-        std::cout << osuCrypto::IoStream::lock << "total init_online  = " << initOnline / 1000.0 << " ms" << osuCrypto::IoStream::unlock << std::endl;
-        std::cout << osuCrypto::IoStream::lock << "total online       = " << online / 1000.0 << " ms" << osuCrypto::IoStream::unlock << std::endl;
-        std::cout << osuCrypto::IoStream::lock << "each  online       = " << (online / 1000.0) / numExec << " ms" << osuCrypto::IoStream::unlock << std::endl;
-        
         for(int k = 0; k < rwCount * (1 + recursiveIterationsCount); k++){
             read2PC[k]->cleanup();
             evict2PC[k]->cleanup();
@@ -191,6 +217,18 @@ namespace batchRam
 //        halt2PC->cleanup();
 //        universalInstruction2PC->cleanup();
 //        evict2PC->cleanup();
+
+
+        auto xhcoffline = std::chrono::duration_cast<std::chrono::microseconds>(endXHCOffline - startXHCOffline).count();
+        auto offline = std::chrono::duration_cast<std::chrono::microseconds>(endOffline - startOffline).count();
+        auto initOnline = std::chrono::duration_cast<std::chrono::microseconds>(endInitOnline - startInitOnline).count();
+        auto online = std::chrono::duration_cast<std::chrono::microseconds>(endOnline - startOnline).count();
+        std::cout << osuCrypto::IoStream::lock << "total xhc_offline  = " << xhcoffline / 1000.0 << " ms" << osuCrypto::IoStream::unlock << std::endl;
+        std::cout << osuCrypto::IoStream::lock << "total offline      = " << offline / 1000.0 << " ms" << osuCrypto::IoStream::unlock << std::endl;
+        std::cout << osuCrypto::IoStream::lock << "total init_online  = " << initOnline / 1000.0 << " ms" << osuCrypto::IoStream::unlock << std::endl;
+        std::cout << osuCrypto::IoStream::lock << "total online       = " << online / 1000.0 << " ms" << osuCrypto::IoStream::unlock << std::endl;
+        std::cout << osuCrypto::IoStream::lock << "each  online       = " << (online / 1000.0) / numExec << " ms" << osuCrypto::IoStream::unlock << std::endl;
+
     }
 
     void
